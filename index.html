@@ -521,6 +521,7 @@ function statusBadge(b) {
 /* ============================== หน้าจอ ============================== */
 let tab = 'home';
 let txnMonth = cycleKey(today());
+let txnView = 'summary'; // 'summary' | 'list'
 let txnCard = 'all';
 const view = document.getElementById('view');
 
@@ -578,7 +579,7 @@ function renderHome() {
   const liveShown = live.filter((x) => x.cs.count);
   h += `<h2>⚡ ยอดใช้จ่ายรอบนี้ (ยังไม่ตัดรอบ)<span class="sp"></span><span class="muted small">${money(liveTotal)}</span></h2>`;
   h += `<div class="card list">` + (liveShown.length ? liveShown.map(({ card, cs }) => `
-    <div class="row clickable" data-act="txn-add" data-card="${card.id}">${chip(card)}
+    <div class="row clickable" data-act="txn-card-go" data-id="${card.id}">${chip(card)}
       <div class="grow"><div class="title">${esc(cardLabel(card))}</div>
         <div class="meta">${cs.cutDate ? 'ตัดรอบ ' + fmtD(cs.cutDate) + ' (' + relDays(daysBetween(t, cs.cutDate)) + ')' : 'เดือนนี้'} · ${cs.count} รายการ</div>
 </div>
@@ -681,14 +682,14 @@ function instRow({ p, s }) {
     return `<div class="row clickable" data-act="inst-edit" data-id="${p.id}">
     <div class="grow"><div class="title">${esc(p.name)}</div>
       <div class="meta">รายเดือน · ไม่มีกำหนดสิ้นสุด</div></div>
-    <div class="amt">${money(p.monthly)}<div class="meta">ต่อเนื่อง</div></div></div>`;
+    <div class="amt">${money(p.monthly)}<div class="meta">ต่อเนื่อง</div></div><span class="muted" aria-hidden="true">›</span></div>`;
   }
   const pct = (s.billed / p.months) * 100;
   return `<div class="row clickable" data-act="inst-edit" data-id="${p.id}">
     <div class="grow"><div class="title">${esc(p.name)}</div>
       <div class="meta">งวด ${s.billed}/${p.months} · ${p.rate ? 'ดอกเบี้ย ' + p.rate + '%' : '0%'} · งวดสุดท้าย ${fmtKey(s.endKey)}</div>
       <div class="bar" style="margin-top:6px"><i style="width:${pct}%"></i></div></div>
-    <div class="amt">${money(p.monthly)}<div class="meta">เหลือ ${money(s.remainingAmt)}</div></div></div>`;
+    <div class="amt">${money(p.monthly)}<div class="meta">เหลือ ${money(s.remainingAmt)}</div></div><span class="muted" aria-hidden="true">›</span></div>`;
 }
 
 /** ยอดค้างจ่ายของบัตร: บิลที่ตัดแล้วแต่ยังไม่จ่าย + รอบปัจจุบันที่ยังไม่ตัด แยก ใช้จ่าย / ผ่อน (บิลที่จ่ายแล้วไม่นับ) */
@@ -737,6 +738,11 @@ function renderTxn() {
   let h = `<h2>สรุปยอดค้างจ่ายตามบัตร<span class="sp"></span>
     <button class="btn sm" data-act="import" ${state.cards.length ? '' : 'disabled'}>⬆ CSV</button>
     <button class="btn sm primary" data-act="txn-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่ม</button></h2>`;
+  const nAll = rows.reduce((a, o) => a + outstandingTxns(o).length, 0);
+  h += `<div class="seg" style="margin-bottom:10px">
+    <button class="btn ${txnView === 'summary' ? 'on' : ''}" data-act="txn-view" data-id="summary" style="flex:1 1 0">📊 สรุป</button>
+    <button class="btn ${txnView === 'list' ? 'on' : ''}" data-act="txn-view" data-id="list" style="flex:1 1 0">📝 รายการ / แก้ไข (${nAll})</button></div>`;
+  if (txnView === 'summary') {
   h += `<div class="card pad viz" style="margin-bottom:10px">
     <div class="muted small">ยอดที่ต้องจ่ายทั้งหมด (ยังไม่ชำระ)</div>
     <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums">${money(tot)}</div>
@@ -747,7 +753,7 @@ function renderTxn() {
       const sub = o.parts.map((p) => p.kind === 'current'
         ? `รอบนี้${p.cut ? ' (ตัด ' + fmtD(p.cut) + ')' : ''} ${money(p.spend + p.inst)}`
         : `${p.overdue ? '⚠ เลยกำหนด' : 'บิล ' + fmtKey(p.key)}${p.est ? ' ~' : ' '}${money(p.spend + p.inst)} จ่าย ${fmtD(p.due)}`).filter((x) => !/ ฿0$/.test(x)).join(' · ');
-      return `<div class="sbar clickable ${txnCard === c.id ? 'sel' : ''}" role="listitem" data-act="txn-card" data-id="${txnCard === c.id ? 'all' : c.id}"
+      return `<div class="sbar clickable ${txnCard === c.id ? 'sel' : ''}" role="listitem" data-act="txn-card-go" data-id="${c.id}"
           title="${esc(cardLabel(c))}: ใช้จ่าย ${money(o.spend)} · ผ่อน ${money(o.inst)}">
         <div class="sbar-h">${chip(c)}<span class="grow title">${esc(cardLabel(c).replace(/ ••\d{4}$/, ''))}</span><b class="amt">${money(o.total)}</b></div>
         <div class="track">${o.spend > 0 ? `<i class="seg s1" style="width:${w(o.spend)}%"></i>` : ''}${o.inst > 0 ? `<i class="seg s2" style="width:${w(o.inst)}%"></i>` : ''}</div>
@@ -755,19 +761,28 @@ function renderTxn() {
       </div>`;
     }).join('') + `</div>` : `<div class="empty">✅ ไม่มียอดค้างจ่าย</div>`}
   </div>
-  <p class="small muted">นับ: บิลที่ตัดรอบแล้วแต่ยังไม่กด “จ่ายแล้ว” + ยอดรอบปัจจุบันที่ยังไม่ตัด (รวมค่างวดผ่อนของรอบนั้น) · บิลที่ยังไม่กรอกยอดใช้ยอดประมาณ (~) · แตะแท่งเพื่อดูรายการของบัตรนั้น</p>`;
+  <p class="small muted">นับ: บิลที่ตัดรอบแล้วแต่ยังไม่กด “จ่ายแล้ว” + ยอดรอบปัจจุบันที่ยังไม่ตัด (รวมค่างวดผ่อนของรอบนั้น) · บิลที่ยังไม่กรอกยอดใช้ยอดประมาณ (~) · แตะแท่งเพื่อดู/แก้ไขรายการของบัตรนั้น</p>`;
+  return h;
+  }
 
+  // รายการแยกตามบัตร (เหมือนหน้าผ่อนชำระ) — แตะรายการเพื่อแก้ไข/ลบ
   const sel = txnCard !== 'all' && cardById(txnCard);
-  const list = (sel ? rows.filter((o) => o.card.id === txnCard) : rows).flatMap((o) => outstandingTxns(o)).sort((a, b) => b.date.localeCompare(a.date));
-  h += `<h2 style="font-size:14px">รายการใช้จ่าย${sel ? ' · ' + esc(cardLabel(sel)) : 'ที่ยังไม่ชำระ'} (${list.length})<span class="sp"></span>${sel ? '<button class="btn sm" data-act="txn-card" data-id="all">ดูทุกบัตร</button>' : ''}</h2>`;
-  if (!list.length) h += `<div class="card empty">ไม่มีรายการ<br><span class="small">กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึก</span></div>`;
-  else h += `<div class="card list">` + list.map((x) => {
-    const c = cardById(x.cardId);
-    return `<div class="row clickable" data-act="txn-edit" data-id="${x.id}">${c ? chip(c) : ''}
-      <div class="grow"><div class="title">${esc(x.desc || '(ไม่มีชื่อ)')}</div>
-      <div class="meta">${fmtD(parseIso(x.date))} · ${esc((CAT_BY_ID[x.category] || CAT_BY_ID.other).label)}</div></div>
-      <div class="amt" style="${Number(x.amount) < 0 ? 'color:var(--ok)' : ''}">${money(x.amount)}</div></div>`;
-  }).join('') + `</div>`;
+  const groups = (sel ? rows.filter((o) => o.card.id === txnCard) : rows)
+    .map((o) => ({ card: o.card, list: outstandingTxns(o).sort((a, b) => b.date.localeCompare(a.date)) })).filter((g) => g.list.length);
+  const n = groups.reduce((a, g) => a + g.list.length, 0);
+  h += `<h2 style="margin-top:0">รายการใช้จ่ายที่ยังไม่ชำระ (${n})<span class="sp"></span>${sel ? '<button class="btn sm" data-act="txn-card" data-id="all">ดูทุกบัตร</button>' : ''}</h2>`;
+  if (!n) h += `<div class="card empty">ไม่มีรายการ<br><span class="small">กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึก</span></div>`;
+  else h += `<p class="small muted" style="margin:-4px 0 6px">แตะที่รายการเพื่อแก้ไขหรือลบ</p>`;
+  for (const g of groups) {
+    h += `<h2 style="font-size:14px">${chip(g.card)} ${esc(cardLabel(g.card))}<span class="sp"></span>
+      <button class="btn sm" data-act="txn-add" data-card="${g.card.id}">＋ เพิ่ม</button></h2>`;
+    h += `<div class="card list">` + g.list.map((x) => `
+      <div class="row clickable" data-act="txn-edit" data-id="${x.id}">
+        <div class="grow"><div class="title">${esc(x.desc || '(ไม่มีชื่อ)')}</div>
+        <div class="meta">${fmtD(parseIso(x.date))} · ${esc((CAT_BY_ID[x.category] || CAT_BY_ID.other).label)}</div></div>
+        <div class="amt" style="${Number(x.amount) < 0 ? 'color:var(--ok)' : ''}">${money(x.amount)}</div>
+        <span class="muted" aria-hidden="true">›</span></div>`).join('') + `</div>`;
+  }
   return h;
 }
 
@@ -1377,6 +1392,8 @@ document.addEventListener('click', async (e) => {
     case 'txn-del':
       state.txns = state.txns.filter((x) => x.id !== id); closeSheet(); save(); break;
     case 'txn-card': txnCard = id; render(); break;
+    case 'txn-card-go': txnCard = id; tab = 'txn'; txnView = 'list'; render(); window.scrollTo(0, 0); break;
+    case 'txn-view': txnView = id; if (id === 'summary') txnCard = 'all'; render(); window.scrollTo(0, 0); break;
     case 'month-prev': txnMonth = addMonthsKey(txnMonth, -1); render(); break;
     case 'month-next': txnMonth = addMonthsKey(txnMonth, 1); render(); break;
     case 'import': importForm(); break;
