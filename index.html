@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>บัตรของฉัน</title>
+<meta name="description" content="รวมบัตรเครดิตทุกธนาคาร สรุปการใช้จ่าย การผ่อนชำระ ยอดค้างชำระ วันตัดรอบ วันครบกำหนด และแจ้งเตือน">
+<meta name="theme-color" content="#1e40af">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="บัตรของฉัน">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f1f5f9; --surface: #ffffff; --surface-2: #f8fafc; --text: #0f172a; --muted: #64748b;
+  --border: #e2e8f0; --primary: #1e40af; --primary-soft: #dbeafe; --on-primary: #ffffff;
+  --danger: #dc2626; --danger-soft: #fee2e2; --warn: #b45309; --warn-soft: #fef3c7;
+  --ok: #15803d; --ok-soft: #dcfce7; --shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1120; --surface: #131c2e; --surface-2: #1a2438; --text: #e2e8f0; --muted: #94a3b8;
+    --border: #26324a; --primary: #60a5fa; --primary-soft: #1e3a5f; --on-primary: #0b1120;
+    --danger: #f87171; --danger-soft: #3f1d1d; --warn: #fbbf24; --warn-soft: #3d2f10;
+    --ok: #4ade80; --ok-soft: #12321f; --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1120; --surface: #131c2e; --surface-2: #1a2438; --text: #e2e8f0; --muted: #94a3b8;
+  --border: #26324a; --primary: #60a5fa; --primary-soft: #1e3a5f; --on-primary: #0b1120;
+  --danger: #f87171; --danger-soft: #3f1d1d; --warn: #fbbf24; --warn-soft: #3d2f10;
+  --ok: #4ade80; --ok-soft: #12321f; --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'IBM Plex Sans Thai', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 15px; line-height: 1.5; -webkit-tap-highlight-color: transparent;
+}
+header.top {
+  position: sticky; top: 0; z-index: 10; background: var(--surface);
+  border-bottom: 1px solid var(--border); padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+header.top h1 { font-size: 18px; margin: 0; flex: 1; }
+header.top .date { color: var(--muted); font-size: 13px; }
+main { max-width: 720px; margin: 0 auto; padding: 14px 16px calc(90px + env(safe-area-inset-bottom)); }
+nav.tabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10; background: var(--surface);
+  border-top: 1px solid var(--border); display: flex; padding-bottom: env(safe-area-inset-bottom);
+}
+nav.tabs button {
+  flex: 1; border: 0; background: none; color: var(--muted); font: inherit; font-size: 11.5px;
+  padding: 8px 2px 9px; display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer;
+}
+nav.tabs button .ic { font-size: 20px; line-height: 1.2; filter: grayscale(1); opacity: .7; }
+nav.tabs button.on { color: var(--primary); font-weight: 600; }
+nav.tabs button.on .ic { filter: none; opacity: 1; }
+h2 { font-size: 16px; margin: 22px 0 8px; display: flex; align-items: center; gap: 8px; }
+h2 .sp { flex: 1; }
+h2:first-child { margin-top: 4px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+.pad { padding: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { padding: 12px 14px; }
+.tile .lbl { color: var(--muted); font-size: 12.5px; }
+.tile .val { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; word-break: break-all; }
+.tile .sub { color: var(--muted); font-size: 12px; }
+.list > .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); }
+.list > .row:first-child { border-top: 0; }
+.row .grow { flex: 1; min-width: 0; }
+.row .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .meta { color: var(--muted); font-size: 12.5px; }
+.row .amt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.clickable { cursor: pointer; }
+.chip {
+  min-width: 40px; padding: 0 5px; height: 28px; border-radius: 6px; color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; flex: none; letter-spacing: .2px;
+}
+.badge { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
+.b-danger { background: var(--danger-soft); color: var(--danger); }
+.b-warn { background: var(--warn-soft); color: var(--warn); }
+.b-ok { background: var(--ok-soft); color: var(--ok); }
+.b-info { background: var(--primary-soft); color: var(--primary); }
+.b-muted { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.alert { border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; }
+.alert.danger { background: var(--danger-soft); color: var(--danger); }
+.alert.warn { background: var(--warn-soft); color: var(--warn); }
+.alert.info { background: var(--primary-soft); color: var(--primary); }
+.btn {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; font-size: 14px;
+  padding: 8px 14px; border-radius: 10px; cursor: pointer; font-weight: 500; white-space: nowrap;
+}
+.btn.primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.btn.danger { color: var(--danger); }
+.btn.sm { padding: 4px 10px; font-size: 13px; border-radius: 8px; }
+.btn.block { width: 100%; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.empty { text-align: center; color: var(--muted); padding: 26px 16px; }
+.bar { height: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
+.bar.warn > i { background: var(--warn); }
+.bar.danger > i { background: var(--danger); }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+.seg { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px; scrollbar-width: none; }
+.seg button { flex: none; }
+.seg .on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.cc {
+  border-radius: 14px; padding: 14px 16px; color: #fff; position: relative; overflow: hidden; cursor: pointer;
+  min-height: 118px; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 10px;
+}
+.cc::after { content: ''; position: absolute; right: -40px; top: -40px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,.12); }
+.cc .top { display: flex; justify-content: space-between; gap: 8px; position: relative; z-index: 1; }
+.cc .bank { font-size: 12.5px; opacity: .9; }
+.cc .nm { font-weight: 700; font-size: 16px; }
+.cc .num { letter-spacing: 2px; font-variant-numeric: tabular-nums; opacity: .95; }
+.cc .bot { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; font-size: 12.5px; position: relative; z-index: 1; flex-wrap: wrap; }
+.cc .pill { background: rgba(255,255,255,.22); border-radius: 99px; padding: 2px 10px; font-weight: 600; }
+dialog#sheet {
+  border: 0; padding: 0; width: 100%; max-width: 560px; max-height: 92vh; border-radius: 18px 18px 0 0;
+  margin: auto auto 0; background: var(--surface); color: var(--text);
+}
+@media (min-width: 600px) { dialog#sheet { border-radius: 18px; margin: auto; } }
+dialog#sheet::backdrop { background: rgba(2,6,23,.55); }
+.sheet-h { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.sheet-h b { flex: 1; font-size: 16px; }
+.sheet-b { padding: 14px 16px 22px; }
+.x { border: 0; background: var(--surface-2); color: var(--text); width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+label.f { display: block; margin-bottom: 12px; font-size: 13.5px; color: var(--muted); }
+label.f > span { display: block; margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px;
+}
+textarea { min-height: 120px; font-size: 14px; font-family: ui-monospace, monospace; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; margin: 0 6px 0 0; accent-color: var(--primary); }
+.check { display: flex; align-items: center; margin-bottom: 12px; font-size: 15px; color: var(--text); }
+.hint { font-size: 12.5px; color: var(--muted); margin: -6px 0 12px; }
+.catbar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--border); }
+.catbar:first-child { border-top: 0; }
+.catbar .bar { grid-column: 1 / -1; }
+.months { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 10px 14px 0; }
+.months .m { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
+.months .m i { width: 100%; max-width: 34px; background: var(--primary); border-radius: 6px 6px 2px 2px; min-height: 2px; opacity: .85; }
+.months .m.cur i { opacity: 1; }
+.months .m span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.months-v { display: flex; gap: 6px; padding: 0 14px 10px; }
+.months-v span { flex: 1; text-align: center; font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; }
+.fab {
+  position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 11;
+  width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--primary); color: var(--on-primary);
+  font-size: 30px; line-height: 1; cursor: pointer; box-shadow: 0 6px 18px rgba(30,64,175,.35);
+}
+.fab[hidden] { display: none; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: #0f172a; color: #fff; padding: 9px 16px; border-radius: 10px; font-size: 14px; z-index: 50;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25); max-width: calc(100% - 32px);
+}
+.tl { position: relative; }
+.tl .row { align-items: flex-start; }
+.tl .dt { width: 48px; text-align: center; flex: none; }
+.tl .dt b { display: block; font-size: 18px; line-height: 1.1; }
+.tl .dt small { color: var(--muted); font-size: 11px; }
+code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 0 5px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>💳 บัตรของฉัน</h1>
+  <span class="date" id="today"></span>
+</header>
+<main id="view"></main>
+<nav class="tabs" id="tabs">
+  <button data-tab="home"><span class="ic">🏠</span>ภาพรวม</button>
+  <button data-tab="cards"><span class="ic">💳</span>บัตร</button>
+  <button data-tab="inst"><span class="ic">📆</span>ผ่อนชำระ</button>
+  <button data-tab="txn"><span class="ic">🧾</span>ใช้จ่าย</button>
+  <button data-tab="settings"><span class="ic">⚙️</span>ตั้งค่า</button>
+</nav>
+<button class="fab" id="fab" data-act="txn-add" aria-label="บันทึกการใช้จ่าย" hidden>＋</button>
+<dialog id="sheet"></dialog>
+
+<script>
+'use strict';
+/* ============================== ค่าคงที่ ============================== */
+const ISSUERS = {
+  kbank: { name: 'กสิกรไทย', app: 'K PLUS / UCHOOSE', short: 'KBank', color: '#00a651' },
+  scb:   { name: 'ไทยพาณิชย์ / CardX', app: 'SCB EASY / CardX', short: 'SCB', color: '#4e2a84' },
+  ktc:   { name: 'เคทีซี (KTC)', app: 'KTC Mobile', short: 'KTC', color: '#d71920' },
+  ttb:   { name: 'ทีทีบี (ttb)', app: 'ttb touch', short: 'ttb', color: '#0b4ea2' },
+  uob:   { name: 'ยูโอบี (UOB)', app: 'UOB TMRW', short: 'UOB', color: '#0b2f6b' },
+  bbl:   { name: 'กรุงเทพ', app: 'Bangkok Bank', short: 'BBL', color: '#1e4598' },
+  spay:  { name: 'ShopeePay / SPayLater', app: 'ShopeePay', short: 'SPay', color: '#ee4d2d' },
+  homepro: { name: 'HomePro', app: '', short: 'HomePro', color: '#0a5fb4' },
+  central: { name: 'Central', app: '', short: 'Central', color: '#b8102b' },
+  lazada:  { name: 'Lazada', app: '', short: 'Lazada', color: '#2e1a8c' },
+  other: { name: 'อื่นๆ', app: '', short: 'อื่น', color: '#475569' },
+};
+const CATS = [
+  { id: 'food', label: '🍜 อาหาร/เครื่องดื่ม', re: /grab ?food|line ?man|foodpanda|robinhood|starbucks|caf[eé]|coffee|kfc|mcdonald|\bmk\b|restaurant|ร้านอาหาร|กาแฟ|ชาบู|swensen|after you|bonchon|amazon cafe|pizza|sushi/i },
+  { id: 'grocery', label: '🛒 ซูเปอร์มาร์เก็ต/สะดวกซื้อ', re: /7-?eleven|7-11|lotus|big ?c|makro|\btops\b|gourmet|villa market|family ?mart|lawson|\bcj\b|foodland|max ?valu/i },
+  { id: 'online', label: '📦 ช้อปออนไลน์', re: /shopee|lazada|amazon|aliexpress|temu|tiktok|nocnoc/i },
+  { id: 'travel', label: '⛽ เดินทาง/น้ำมัน', re: /\bptt\b|shell|caltex|bangchak|บางจาก|esso|\bgrab\b|bolt|\bbts\b|\bmrt\b|easy ?pass|m-?flow|ทางด่วน|parking|ที่จอด|น้ำมัน/i },
+  { id: 'bills', label: '💡 บิล/มือถือ/ประกัน', re: /\bais\b|true ?move|dtac|3bb|การไฟฟ้า|\bpea\b|\bmea\b|ประปา|insurance|ประกัน|internet|fiber/i },
+  { id: 'pet', label: '🐾 สัตว์เลี้ยง', re: /\bpet|สัตว์|\bvet\b/i },
+  { id: 'health', label: '💊 สุขภาพ/ความงาม', re: /hospital|โรงพยาบาล|clinic|คลินิก|pharma|ร้านยา|boots|watsons|eveandboy|fitness|ฟิตเนส/i },
+  { id: 'ent', label: '🎬 บันเทิง/สมาชิก', re: /netflix|spotify|youtube|apple\.com|itunes|google|disney|hbo|major|sf cinema|steam|playstation|\bviu\b|wetv|true ?id|chatgpt|openai|anthropic|claude/i },
+  { id: 'trip', label: '✈️ ท่องเที่ยว/ที่พัก', re: /agoda|booking\.com|airasia|thai ?airways|nok ?air|lion ?air|vietjet|hotel|โรงแรม|resort|airbnb|trip\.com|klook/i },
+  { id: 'shop', label: '🛍️ ช้อปปิ้ง/ห้าง/บ้าน', re: /central|robinson|the mall|emporium|uniqlo|h&m|zara|ikea|homepro|power ?buy|banana|jaymart|paragon|index living|boonthavorn|ไทวัสดุ|thai ?watsadu|global ?house/i },
+  { id: 'edu', label: '📚 การศึกษา/หนังสือ', re: /school|โรงเรียน|มหาวิทยาลัย|university|course|udemy|coursera|นายอินทร์|se-ed|kinokuniya/i },
+  { id: 'other', label: '📌 อื่นๆ', re: null },
+];
+// บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
+const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
+const STORE_KEY = 'mycards.v1';
+const DAY = 86400000;
+const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+/* ============================== ข้อมูล ============================== */
+function blankState() {
+  return {
+    version: 1, cards: [], statements: [], installments: [], txns: [],
+    settings: { remindDays: [5, 3, 1, 0], notified: {}, gasUrl: '', syncKey: '', lastSync: '', lastSyncError: '', lastCardId: '' },
+  };
+}
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (s && Array.isArray(s.cards)) {
+      const b = blankState();
+      return Object.assign(b, s, { settings: Object.assign(b.settings, s.settings || {}) });
+    }
+  } catch (e) { /* ใช้ค่าเริ่มต้น */ }
+  return blankState();
+}
+let state = loadState();
+function persist() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch (e) { toast('⚠️ บันทึกข้อมูลไม่สำเร็จ'); }
+}
+function save(opts = {}) {
+  persist();
+  if (!opts.noSync) scheduleSync();
+  render();
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const cardById = (id) => state.cards.find((c) => c.id === id);
+/** บัตรที่ตั้งวันตัดรอบ/วันครบกำหนดแล้ว จึงคำนวณรอบบิลได้ */
+const hasDates = (c) => !!(c && c.statementDay && c.dueDay);
+const datedCards = () => state.cards.filter(hasDates);
+
+/* ============================== รหัสผ่าน / ข้อมูลเข้ารหัส ============================== */
+// ข้อมูลบัตรของเจ้าของแอป เข้ารหัส AES-256-GCM (คีย์จาก PBKDF2-SHA256) — repo เป็น Public เห็นได้แค่ข้อความเข้ารหัส
+const SEALED = {"v":1,"iter":600000,"salt":"VP3gca6c42ZeKU+AUSNcSg==","iv":"judx7I3uKpZ1V+DC","ct":"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"}; /*SEALED*/
+const b64d = (x) => Uint8Array.from(atob(x), (c) => c.charCodeAt(0));
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+async function pbkdf2(password, salt, iter, usage) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey', 'deriveBits']);
+  if (usage === 'bits') return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base, 256);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+}
+async function unsealData(password) {
+  const key = await pbkdf2(password, b64d(SEALED.salt), SEALED.iter);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(SEALED.iv) }, key, b64d(SEALED.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function lockHash(password, saltHex) {
+  const salt = Uint8Array.from(saltHex.match(/../g).map((h) => parseInt(h, 16)));
+  return hex(await pbkdf2(password, salt, 150000, 'bits'));
+}
+async function setLockPassword(password) {
+  const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+  state.settings.lock = { salt, hash: await lockHash(password, salt), enabled: true };
+  persist();
+}
+function isUnlocked() { try { return sessionStorage.getItem('mycards.unlocked') === '1'; } catch (e) { return false; } }
+function markUnlocked() { try { sessionStorage.setItem('mycards.unlocked', '1'); } catch (e) { /* ignore */ } unlockedMem = true; }
+let unlockedMem = false;
+const isLocked = () => !!(state.settings.lock && state.settings.lock.enabled && !isUnlocked() && !unlockedMem);
+function renderLock() {
+  return `<div class="card pad" style="text-align:center;margin-top:30px">
+    <div style="font-size:44px">🔒</div>
+    <h2 style="justify-content:center">แอปถูกล็อก</h2>
+    <form id="unlockForm" autocomplete="off">
+      <input type="password" id="unlockPw" placeholder="รหัสผ่าน" autofocus style="text-align:center;font-size:20px;margin-bottom:10px">
+      <button class="btn primary block" type="submit">ปลดล็อก</button>
+    </form></div>`;
+}
+function unsealCard() {
+  if (!SEALED) return '';
+  return `<div class="card pad" style="margin-bottom:12px">
+    <b>🔐 โหลดข้อมูลบัตรของฉัน</b>
+    <p class="small muted" style="margin:4px 0 10px">ข้อมูลบัตร วันตัดรอบ รายการผ่อน และยอดรอบปัจจุบัน ถูกเข้ารหัสไว้ — ใส่รหัสผ่านเพื่อโหลดเข้าเครื่องนี้</p>
+    <form id="unsealForm" autocomplete="off">
+      <input type="password" id="unsealPw" placeholder="รหัสผ่าน" style="margin-bottom:10px">
+      <button class="btn primary block" type="submit">โหลดข้อมูล</button>
+    </form></div>`;
+}
+document.addEventListener('submit', async (e) => {
+  if (e.target.id === 'unlockForm') {
+    e.preventDefault();
+    const pw = document.getElementById('unlockPw').value, L = state.settings.lock;
+    if (L && (await lockHash(pw, L.salt)) === L.hash) { markUnlocked(); render(); checkNotifications(); }
+    else { toast('รหัสผ่านไม่ถูกต้อง'); document.getElementById('unlockPw').select(); }
+  }
+  if (e.target.id === 'unsealForm') {
+    e.preventDefault();
+    const pw = document.getElementById('unsealPw').value;
+    try {
+      const data = await unsealData(pw);
+      const b = blankState();
+      state = Object.assign(b, data, { settings: Object.assign(b.settings, data.settings || {}) });
+      await setLockPassword(pw);
+      markUnlocked();
+      save({ noSync: true });
+      toast(`โหลดข้อมูลแล้ว: ${state.cards.length} บัตร · ผ่อน ${state.installments.length} · รายการ ${state.txns.length}`);
+    } catch (err) { toast('รหัสผ่านไม่ถูกต้อง'); }
+  }
+});
+
+/* ============================== วันที่ ============================== */
+const pad = (n) => String(n).padStart(2, '0');
+function today() { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+function parseIso(s) { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d || 1); }
+function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+function clampDate(y, m, d) {
+  const first = new Date(y, m, 1);
+  return new Date(first.getFullYear(), first.getMonth(), Math.min(d, daysInMonth(first.getFullYear(), first.getMonth())));
+}
+function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+function daysBetween(a, b) { return Math.round((b - a) / DAY); }
+/** วันตัดรอบของบัตรในเดือน (y, m) */
+function stmtDate(card, y, m) { return clampDate(y, m, card.statementDay); }
+/** วันครบกำหนดชำระของรอบบิลที่ตัดในวัน S (วันครบกำหนดแรกที่อยู่หลังวันตัดรอบ) */
+function dueFor(card, S) {
+  let d = clampDate(S.getFullYear(), S.getMonth(), card.dueDay);
+  if (d <= S) d = clampDate(S.getFullYear(), S.getMonth() + 1, card.dueDay);
+  return d;
+}
+/** รอบบิลล่าสุดที่ตัดไปแล้ว (รวมวันนี้) */
+function lastStmt(card, t = today()) {
+  let s = stmtDate(card, t.getFullYear(), t.getMonth());
+  if (s > t) s = stmtDate(card, t.getFullYear(), t.getMonth() - 1);
+  return s;
+}
+/** รอบบิลที่รายการซึ่งรูดในวัน t จะไปอยู่ */
+function stmtForPurchase(card, t) {
+  let s = stmtDate(card, t.getFullYear(), t.getMonth());
+  if (s < t) s = stmtDate(card, t.getFullYear(), t.getMonth() + 1);
+  return s;
+}
+function shiftCycle(card, S, n) { return stmtDate(card, S.getFullYear(), S.getMonth() + n); }
+function cycleKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1); }
+function keyToStmt(card, key) { const [y, m] = key.split('-').map(Number); return stmtDate(card, y, m - 1); }
+function monthsDiff(fromKey, toKey) {
+  const [y1, m1] = fromKey.split('-').map(Number), [y2, m2] = toKey.split('-').map(Number);
+  return (y2 - y1) * 12 + (m2 - m1);
+}
+function addMonthsKey(key, n) { const [y, m] = key.split('-').map(Number); return cycleKey(new Date(y, m - 1 + n, 1)); }
+function fmtD(d) { return d.getDate() + ' ' + TH_MONTHS[d.getMonth()]; }
+function fmtDY(d) { return fmtD(d) + ' ' + String(d.getFullYear() + 543).slice(2); }
+function fmtKey(key) { const [y, m] = key.split('-').map(Number); return TH_MONTHS[m - 1] + ' ' + String(y + 543).slice(2); }
+function relDays(n) {
+  if (n === 0) return 'วันนี้';
+  if (n === 1) return 'พรุ่งนี้';
+  if (n > 1) return 'อีก ' + n + ' วัน';
+  return 'เลยมา ' + (-n) + ' วัน';
+}
+
+/* ============================== รูปแบบ ============================== */
+const moneyFmt = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const moneyFmt2 = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n) => { const v = Math.round((Number(n) || 0) * 100) / 100; return '฿' + (Number.isInteger(v) ? moneyFmt : moneyFmt2).format(v); };
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const issuerOf = (card) => ISSUERS[card.issuer] || ISSUERS.other;
+function cardLabel(card) {
+  const is = issuerOf(card), n = String(card.name || '');
+  const dup = [is.short, is.name].some((x) => n.toLowerCase().includes(x.toLowerCase())) || n.toLowerCase().includes('spay');
+  return (dup ? n : is.short + ' ' + n) + (card.last4 ? ' ••' + card.last4 : '');
+}
+function chip(card) {
+  const is = issuerOf(card);
+  return `<span class="chip" style="background:${card.color || is.color}">${esc(is.short)}</span>`;
+}
+function guessCat(desc) {
+  for (const c of CATS) if (c.re && c.re.test(desc || '')) return c.id;
+  return 'other';
+}
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach((t) => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2600);
+}
+
+/* ============================== คำนวณ ============================== */
+function findStmt(cardId, key) { return state.statements.find((s) => s.cardId === cardId && s.cycle === key); }
+
+function instStatus(p, t = today()) {
+  const card = cardById(p.cardId);
+  const curKey = hasDates(card) ? cycleKey(lastStmt(card, t)) : cycleKey(t);
+  const ongoing = !p.months; // 0 = รายเดือนไม่มีกำหนด (เช่น ค่าสมาชิก)
+  const sinceFirst = monthsDiff(p.firstCycle, curKey) + 1;
+  if (ongoing) return { ongoing, billed: Math.max(0, sinceFirst), remaining: 0, remainingAmt: 0, endKey: null, active: true };
+  const billed = Math.max(0, Math.min(p.months, sinceFirst));
+  const remaining = p.months - billed;
+  return {
+    billed, remaining, remainingAmt: remaining * p.monthly,
+    endKey: addMonthsKey(p.firstCycle, p.months - 1), active: remaining > 0,
+  };
+}
+function instForCycle(cardId, key) {
+  return state.installments.filter((p) => p.cardId === cardId)
+    .filter((p) => { const k = monthsDiff(p.firstCycle, key); return k >= 0 && (!p.months || k < p.months); })
+    .reduce((s, p) => s + Number(p.monthly || 0), 0);
+}
+/** ประมาณยอดบิลรอบ key จากรายการใช้จ่ายที่บันทึก + ค่างวดผ่อน */
+function estimateCycle(card, key) {
+  const S = keyToStmt(card, key), prev = shiftCycle(card, S, -1);
+  const tx = state.txns.filter((x) => x.cardId === card.id)
+    .filter((x) => { const d = parseIso(x.date); return d > prev && d <= S; })
+    .reduce((s, x) => s + Number(x.amount || 0), 0);
+  const inst = instForCycle(card.id, key);
+  return { tx, inst, total: tx + inst };
+}
+/** สถานะบิลรอบล่าสุดของบัตร */
+function currentBill(card, t = today()) {
+  const S = lastStmt(card, t), D = dueFor(card, S), key = cycleKey(S), st = findStmt(card.id, key);
+  let status;
+  if (st && (st.paid || Number(st.amount) <= 0)) status = 'paid';
+  else if (t <= D) status = st ? 'due' : 'unknown';
+  else status = st ? 'overdue' : 'closed';
+  return { card, S, D, key, st, status, daysLeft: daysBetween(t, D), nextS: shiftCycle(card, S, 1) };
+}
+/** บิลที่ยังต้องจ่าย: บิลค้าง (ทุกรอบ) + บิลรอบปัจจุบันที่ยังไม่ได้กรอกยอด */
+function pendingBills(t = today()) {
+  const out = [];
+  for (const st of state.statements) {
+    const card = cardById(st.cardId);
+    if (!hasDates(card) || st.paid || Number(st.amount) <= 0) continue;
+    const S = keyToStmt(card, st.cycle), D = dueFor(card, S);
+    out.push({ card, S, D, key: st.cycle, st, status: t > D ? 'overdue' : 'due', daysLeft: daysBetween(t, D) });
+  }
+  for (const card of datedCards()) {
+    const b = currentBill(card, t);
+    if (b.status === 'unknown') out.push(b);
+  }
+  return out.sort((a, b) => a.D - b.D);
+}
+function bestCardsToday(t = today()) {
+  return datedCards().map((card) => {
+    const S = stmtForPurchase(card, t), D = dueFor(card, S);
+    return { card, S, D, free: daysBetween(t, D) };
+  }).sort((a, b) => b.free - a.free);
+}
+function upcomingEvents(days = 31, t = today()) {
+  const end = addDays(t, days), ev = [];
+  for (const card of datedCards()) {
+    for (let i = -1; i <= 2; i++) {
+      const S = shiftCycle(card, lastStmt(card, t), i), D = dueFor(card, S);
+      if (S >= t && S <= end) ev.push({ type: 'stmt', date: S, card });
+      if (D >= t && D <= end) {
+        const st = findStmt(card.id, cycleKey(S));
+        ev.push({ type: 'due', date: D, card, st, key: cycleKey(S) });
+      }
+    }
+  }
+  return ev.sort((a, b) => a.date - b.date || (a.type === 'stmt' ? -1 : 1));
+}
+/** ยอดใช้จ่ายรอบปัจจุบัน (ยังไม่ตัดรอบ) ของบัตร — ถ้ายังไม่ตั้งวันตัดรอบ ใช้ยอดเดือนนี้ */
+function cycleSpend(card, t = today()) {
+  let from, to = null;
+  if (hasDates(card)) { from = lastStmt(card, t); to = stmtForPurchase(card, addDays(t, 1)); }
+  else from = new Date(t.getFullYear(), t.getMonth(), 0);
+  const list = state.txns.filter((x) => x.cardId === card.id).filter((x) => { const d = parseIso(x.date); return d > from && (!to || d <= to); });
+  return { amount: list.reduce((s, x) => s + Number(x.amount || 0), 0), count: list.length, cutDate: to };
+}
+function monthTxns(key) { return state.txns.filter((x) => x.date.slice(0, 7) === key); }
+function statusBadge(b) {
+  if (b.status === 'paid') return '<span class="badge b-ok">ชำระแล้ว</span>';
+  if (b.status === 'overdue') return `<span class="badge b-danger">เลยกำหนด ${-b.daysLeft} วัน</span>`;
+  if (b.status === 'unknown') return `<span class="badge ${b.daysLeft <= 3 ? 'b-warn' : 'b-muted'}">ยังไม่กรอกยอด · ${relDays(b.daysLeft)}</span>`;
+  if (b.status === 'due') return `<span class="badge ${b.daysLeft <= 3 ? 'b-warn' : 'b-info'}">${relDays(b.daysLeft)}</span>`;
+  return '<span class="badge b-muted">ไม่มีบิลค้าง</span>';
+}
+
+/* ============================== หน้าจอ ============================== */
+let tab = 'home';
+let txnMonth = cycleKey(today());
+let txnCard = 'all';
+const view = document.getElementById('view');
+
+function render() {
+  document.getElementById('today').textContent = fmtDY(today());
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+  const locked = isLocked();
+  document.getElementById('tabs').style.display = locked ? 'none' : '';
+  if (locked) { view.innerHTML = renderLock(); document.getElementById('fab').hidden = true; return; }
+  const fn = { home: renderHome, cards: renderCards, inst: renderInst, txn: renderTxn, settings: renderSettings }[tab];
+  view.innerHTML = fn();
+  document.getElementById('fab').hidden = !state.cards.length || tab === 'settings';
+}
+
+function renderHome() {
+  if (!state.cards.length) {
+    return unsealCard() + `<div class="card pad" style="text-align:center">
+      <div style="font-size:44px">💳</div>
+      <h2 style="justify-content:center">เริ่มต้นใช้งาน</h2>
+      <p class="muted">เพิ่มบัตรของคุณ (KTC, กสิกรไทย, SCB, UOB, ttb, กรุงเทพ, SPayLater, HomePro, Central, Lazada)<br>พร้อมวันตัดรอบและวันครบกำหนดชำระ แล้วแอปจะเตือนให้อัตโนมัติ</p>
+      <div class="btns" style="justify-content:center">
+        <label class="btn primary">⬆ กู้คืนข้อมูลจากไฟล์สำรอง<input type="file" id="restoreFile" accept=".json,application/json" hidden></label>
+        <button class="btn" data-act="card-add">+ เพิ่มบัตร</button>
+        <button class="btn" data-act="demo">ลองดูด้วยข้อมูลตัวอย่าง</button>
+      </div></div>`;
+  }
+  const t = today();
+  const pend = pendingBills(t);
+  const overdue = pend.filter((b) => b.status === 'overdue');
+  const soon = pend.filter((b) => b.status !== 'overdue' && b.daysLeft <= 5);
+  const totalDue = pend.reduce((s, b) => s + (b.st ? Number(b.st.amount) : 0), 0);
+  const totalMin = pend.reduce((s, b) => s + (b.st ? Number(b.st.minPay || 0) : 0), 0);
+  const activeInst = state.installments.map((p) => [p, instStatus(p, t)]).filter(([, s]) => s.active);
+  const instMonthly = activeInst.reduce((s, [p]) => s + Number(p.monthly), 0);
+  const instRemain = activeInst.reduce((s, [, st]) => s + st.remainingAmt, 0);
+  const curKey = cycleKey(t);
+  const spent = monthTxns(curKey).reduce((s, x) => s + Number(x.amount), 0);
+  const unknownCount = pend.filter((b) => b.status === 'unknown').length;
+
+  let h = '';
+  const noDates = state.cards.filter((c) => !hasDates(c));
+  if (noDates.length) h += `<div class="alert info clickable" data-act="go-cards">⚙️ ยังไม่ได้ตั้งวันตัดรอบ/วันครบกำหนด ${noDates.length} บัตร: ${noDates.map((c) => esc(cardLabel(c))).join(', ')} — <b>แตะเพื่อตั้งค่า</b></div>`;
+  if (overdue.length) h += `<div class="alert danger">🚨 <b>มียอดเลยกำหนดชำระ ${overdue.length} รายการ</b> รวม ${money(overdue.reduce((s, b) => s + Number(b.st.amount), 0))} — ชำระโดยเร็วเพื่อเลี่ยงดอกเบี้ยและค่าปรับ</div>`;
+  if (soon.length) h += `<div class="alert warn">⏰ ใกล้ครบกำหนด: ${soon.map((b) => `<b>${esc(cardLabel(b.card))}</b> (${relDays(b.daysLeft)})`).join(', ')}</div>`;
+
+  h += `<div class="grid2">
+    <div class="card tile"><div class="lbl">ยอดที่ต้องชำระ</div><div class="val">${money(totalDue)}</div><div class="sub">${pend.length - unknownCount} บิล${unknownCount ? ` · ยังไม่กรอกยอด ${unknownCount} ใบ` : ''}</div></div>
+    <div class="card tile"><div class="lbl">ยอดขั้นต่ำรวม</div><div class="val">${money(totalMin)}</div><div class="sub">จ่ายเต็มจำนวนดีที่สุด</div></div>
+    <div class="card tile"><div class="lbl">ค่างวดผ่อน / เดือน</div><div class="val">${money(instMonthly)}</div><div class="sub">${activeInst.length} รายการ · เหลือ ${money(instRemain)}</div></div>
+    <div class="card tile"><div class="lbl">ใช้จ่ายเดือนนี้</div><div class="val">${money(spent)}</div><div class="sub">${monthTxns(curKey).length} รายการที่บันทึก</div></div>
+  </div>`;
+
+  const live = state.cards.map((card) => ({ card, cs: cycleSpend(card, t) }));
+  const liveTotal = live.reduce((s, x) => s + x.cs.amount, 0);
+  const liveShown = live.filter((x) => x.cs.count);
+  h += `<h2>⚡ ยอดใช้จ่ายรอบนี้ (ยังไม่ตัดรอบ)<span class="sp"></span><span class="muted small">${money(liveTotal)}</span></h2>`;
+  h += `<div class="card list">` + (liveShown.length ? liveShown.map(({ card, cs }) => `
+    <div class="row clickable" data-act="txn-add" data-card="${card.id}">${chip(card)}
+      <div class="grow"><div class="title">${esc(cardLabel(card))}</div>
+        <div class="meta">${cs.cutDate ? 'ตัดรอบ ' + fmtD(cs.cutDate) + ' (' + relDays(daysBetween(t, cs.cutDate)) + ')' : 'เดือนนี้'} · ${cs.count} รายการ</div>
+</div>
+      <div class="amt">${money(cs.amount)}</div>
+    </div>`).join('') : `<div class="empty">ยังไม่มีรายการรอบนี้ — กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึกการใช้จ่าย</div>`) + `</div>`;
+
+  h += `<h2>🧾 บิลที่ต้องจ่าย</h2>`;
+  if (!pend.length) h += `<div class="card empty">✅ ไม่มียอดค้างชำระ</div>`;
+  else {
+    h += `<div class="card list">` + pend.map((b) => `
+      <div class="row">
+        ${chip(b.card)}
+        <div class="grow clickable" data-act="stmt-edit" data-card="${b.card.id}" data-key="${b.key}">
+          <div class="title">${esc(cardLabel(b.card))}</div>
+          <div class="meta">รอบ ${fmtKey(b.key)} · ครบกำหนด ${fmtD(b.D)} ${statusBadge(b)}</div>
+        </div>
+        <div class="amt">${b.st ? money(b.st.amount) + `<div class="meta">ขั้นต่ำ ${money(b.st.minPay || 0)}</div>` : (() => { const e = estimateCycle(b.card, b.key); return e.total ? `<span class="muted">~${money(e.total)}</span><div class="meta">ประมาณจากที่บันทึก</div>` : '<span class="muted small">—</span>'; })()}
+          <div style="margin-top:4px">${b.st
+            ? `<button class="btn sm" data-act="mark-paid" data-card="${b.card.id}" data-key="${b.key}">✓ จ่ายแล้ว</button>`
+            : `<button class="btn sm primary" data-act="stmt-edit" data-card="${b.card.id}" data-key="${b.key}">กรอกยอด</button>`}</div>
+        </div>
+      </div>`).join('') + `</div>`;
+  }
+
+  const best = bestCardsToday(t).slice(0, 3);
+  h += `<h2>💡 วันนี้รูดใบไหนดี</h2><div class="card list">` + best.map((x, i) => `
+    <div class="row">${chip(x.card)}
+      <div class="grow"><div class="title">${i === 0 ? '⭐ ' : ''}${esc(cardLabel(x.card))}</div>
+      <div class="meta">เข้ารอบ ${fmtD(x.S)} · จ่าย ${fmtDY(x.D)}</div></div>
+      <div class="amt">${x.free} วัน<div class="meta">ปลอดดอกเบี้ย</div></div>
+    </div>`).join('') + `</div><p class="small muted">นับจากวันนี้ถึงวันครบกำหนดของรอบบิลที่รายการจะเข้าไป (ถ้ารูดตรงวันตัดรอบ ถือว่าเข้ารอบนั้น)</p>`;
+
+  const ev = upcomingEvents(14, t);
+  h += `<h2>📅 14 วันข้างหน้า</h2>`;
+  if (!ev.length) h += `<div class="card empty">ไม่มีนัด</div>`;
+  else h += `<div class="card list tl">` + ev.map((e) => {
+    const isDue = e.type === 'due';
+    const paid = isDue && e.st && e.st.paid;
+    return `<div class="row">
+      <div class="dt"><b>${e.date.getDate()}</b><small>${TH_MONTHS[e.date.getMonth()]}</small></div>
+      ${chip(e.card)}
+      <div class="grow"><div class="title">${isDue ? '💰 ครบกำหนดชำระ' : '✂️ วันตัดรอบบัญชี'}</div>
+      <div class="meta">${esc(cardLabel(e.card))} · ${relDays(daysBetween(t, e.date))}</div></div>
+      <div class="amt">${isDue ? (paid ? '<span class="badge b-ok">จ่ายแล้ว</span>' : e.st ? money(e.st.amount) : '<span class="muted small">ยังไม่กรอก</span>') : ''}</div>
+    </div>`;
+  }).join('') + `</div>`;
+  return h;
+}
+
+function renderCards() {
+  const t = today();
+  let h = `<h2>บัตรทั้งหมด (${state.cards.length})<span class="sp"></span><button class="btn sm primary" data-act="card-add">+ เพิ่มบัตร</button></h2>`;
+  if (!state.cards.length) return h + `<div class="card empty">ยังไม่มีบัตร</div>`;
+  for (const card of state.cards) {
+    const is = issuerOf(card), color = card.color || is.color;
+    if (!hasDates(card)) {
+      h += `<div class="cc" style="background:linear-gradient(135deg, ${color}, ${color}cc)" data-act="card-edit" data-id="${card.id}">
+        <div class="top"><div><div class="bank">${esc(is.name)}</div><div class="nm">${esc(card.name)}</div></div>
+        <div class="num">${card.last4 ? '•••• ' + esc(card.last4) : ''}</div></div>
+        <div class="bot"><div>ยังไม่ได้ตั้งวันตัดรอบ / วันครบกำหนด<br>เดือนนี้ใช้ไป <b>${money(cycleSpend(card).amount)}</b></div><span class="pill">⚙️ แตะเพื่อตั้งค่า</span></div></div>`;
+      continue;
+    }
+    const b = currentBill(card, t);
+    const cs = cycleSpend(card, t);
+    h += `<div class="cc" style="background:linear-gradient(135deg, ${color}, ${color}cc)" data-act="card-view" data-id="${card.id}">
+      <div class="top"><div><div class="bank">${esc(is.name)}</div><div class="nm">${esc(card.name)}</div></div>
+        <div class="num">${card.last4 ? '•••• ' + esc(card.last4) : ''}</div></div>
+      <div class="bot">
+        <div>ตัดรอบทุกวันที่ <b>${card.statementDay}</b> · ครบกำหนดวันที่ <b>${card.dueDay}</b><br>
+        รอบนี้ใช้ไป <b>${money(cs.amount)}</b> · ตัดรอบ ${fmtD(cs.cutDate)}</div>
+        <span class="pill">${b.status === 'paid' ? '✓ จ่ายแล้ว' : b.status === 'overdue' ? '⚠ เลยกำหนด' : b.status === 'due' ? money(b.st.amount) + ' · ' + relDays(b.daysLeft) : b.status === 'unknown' ? 'ยังไม่กรอกยอด' : 'ไม่มีบิลค้าง'}</span>
+      </div></div>`;
+  }
+  return h;
+}
+
+function renderInst() {
+  const t = today();
+  const rows = state.installments.map((p) => ({ p, s: instStatus(p, t), card: cardById(p.cardId) }));
+  const active = rows.filter((r) => r.s.active), done = rows.filter((r) => !r.s.active);
+  const monthly = active.reduce((s, r) => s + Number(r.p.monthly), 0);
+  const remain = active.reduce((s, r) => s + r.s.remainingAmt, 0);
+  let h = `<h2>ผ่อนชำระ<span class="sp"></span><button class="btn sm primary" data-act="inst-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่มรายการผ่อน</button></h2>`;
+  h += `<div class="grid2" style="margin-bottom:10px">
+    <div class="card tile"><div class="lbl">ค่างวดรวม / เดือน</div><div class="val">${money(monthly)}</div></div>
+    <div class="card tile"><div class="lbl">ยอดผ่อนคงเหลือ</div><div class="val">${money(remain)}</div></div></div>`;
+  const byCard = {};
+  for (const r of active) (byCard[r.p.cardId] = byCard[r.p.cardId] || []).push(r);
+  if (!active.length) h += `<div class="card empty">ไม่มีรายการผ่อนที่กำลังผ่อนอยู่</div>`;
+  for (const [cid, list] of Object.entries(byCard)) {
+    const card = cardById(cid);
+    h += `<h2 style="font-size:14px">${card ? chip(card) + ' ' + esc(cardLabel(card)) : 'บัตรที่ถูกลบ'}<span class="sp"></span><span class="muted small">${money(list.reduce((s, r) => s + Number(r.p.monthly), 0))}/เดือน</span></h2>`;
+    h += `<div class="card list">` + list.map(instRow).join('') + `</div>`;
+  }
+  if (done.length) h += `<h2 class="muted">ผ่อนครบแล้ว (${done.length})</h2><div class="card list">` + done.map(instRow).join('') + `</div>`;
+  return h;
+}
+function instRow({ p, s }) {
+  if (s.ongoing) {
+    return `<div class="row clickable" data-act="inst-edit" data-id="${p.id}">
+    <div class="grow"><div class="title">${esc(p.name)}</div>
+      <div class="meta">รายเดือน · ไม่มีกำหนดสิ้นสุด</div></div>
+    <div class="amt">${money(p.monthly)}<div class="meta">ต่อเนื่อง</div></div></div>`;
+  }
+  const pct = (s.billed / p.months) * 100;
+  return `<div class="row clickable" data-act="inst-edit" data-id="${p.id}">
+    <div class="grow"><div class="title">${esc(p.name)}</div>
+      <div class="meta">งวด ${s.billed}/${p.months} · ${p.rate ? 'ดอกเบี้ย ' + p.rate + '%' : '0%'} · งวดสุดท้าย ${fmtKey(s.endKey)}</div>
+      <div class="bar" style="margin-top:6px"><i style="width:${pct}%"></i></div></div>
+    <div class="amt">${money(p.monthly)}<div class="meta">เหลือ ${money(s.remainingAmt)}</div></div></div>`;
+}
+
+function renderTxn() {
+  const all = state.txns.filter((x) => txnCard === 'all' || x.cardId === txnCard);
+  const list = all.filter((x) => x.date.slice(0, 7) === txnMonth).sort((a, b) => b.date.localeCompare(a.date));
+  const total = list.reduce((s, x) => s + Number(x.amount), 0);
+  let h = `<h2>สรุปการใช้จ่าย<span class="sp"></span>
+    <button class="btn sm" data-act="import" ${state.cards.length ? '' : 'disabled'}>⬆ นำเข้า CSV</button>
+    <button class="btn sm primary" data-act="txn-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่ม</button></h2>`;
+  h += `<div class="toolbar">
+    <button class="btn sm" data-act="month-prev">‹</button>
+    <input type="month" id="txnMonth" value="${txnMonth}" style="flex:1;min-width:0">
+    <button class="btn sm" data-act="month-next">›</button></div>`;
+  h += `<div class="seg"><button class="btn sm ${txnCard === 'all' ? 'on' : ''}" data-act="txn-card" data-id="all">ทุกบัตร</button>` +
+    state.cards.map((c) => `<button class="btn sm ${txnCard === c.id ? 'on' : ''}" data-act="txn-card" data-id="${c.id}">${esc(cardLabel(c).replace(/ ••\d{4}$/, ''))}</button>`).join('') + `</div>`;
+
+  // กราฟ 6 เดือนย้อนหลัง
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const k = addMonthsKey(txnMonth, -i);
+    months.push({ k, v: all.filter((x) => x.date.slice(0, 7) === k).reduce((s, x) => s + Number(x.amount), 0) });
+  }
+  const maxV = Math.max(1, ...months.map((m) => m.v));
+  h += `<div class="card" style="margin-bottom:10px">
+    <div class="pad" style="padding-bottom:0"><div class="muted small">ยอดใช้จ่าย ${fmtKey(txnMonth)}</div><div style="font-size:24px;font-weight:700">${money(total)}</div></div>
+    <div class="months">${months.map((m) => `<div class="m ${m.k === txnMonth ? 'cur' : ''}"><i style="height:${(m.v / maxV) * 80}%"></i><span>${fmtKey(m.k)}</span></div>`).join('')}</div>
+    <div class="months-v">${months.map((m) => `<span>${m.v ? (m.v >= 1000 ? (m.v / 1000).toFixed(1) + 'k' : Math.round(m.v)) : '-'}</span>`).join('')}</div></div>`;
+
+  if (list.length) {
+    const byCat = {};
+    for (const x of list) byCat[x.category || 'other'] = (byCat[x.category || 'other'] || 0) + Number(x.amount);
+    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+    h += `<h2 style="font-size:14px">ตามหมวดหมู่</h2><div class="card">` + cats.map(([c, v]) => `
+      <div class="catbar"><span>${esc((CAT_BY_ID[c] || CAT_BY_ID.other).label)}</span><b class="amt">${money(v)} <span class="muted small">${total ? ((v / total) * 100).toFixed(0) : 0}%</span></b>
+      <div class="bar"><i style="width:${total > 0 ? Math.max(0, (v / total) * 100) : 0}%"></i></div></div>`).join('') + `</div>`;
+    if (txnCard === 'all' && state.cards.length > 1) {
+      const byCard = {};
+      for (const x of list) byCard[x.cardId] = (byCard[x.cardId] || 0) + Number(x.amount);
+      h += `<h2 style="font-size:14px">ตามบัตร</h2><div class="card list">` + Object.entries(byCard).sort((a, b) => b[1] - a[1]).map(([cid, v]) => {
+        const c = cardById(cid);
+        return `<div class="row">${c ? chip(c) : ''}<div class="grow title">${c ? esc(cardLabel(c)) : 'บัตรที่ถูกลบ'}</div><div class="amt">${money(v)}</div></div>`;
+      }).join('') + `</div>`;
+    }
+  }
+  h += `<h2 style="font-size:14px">รายการ (${list.length})</h2>`;
+  if (!list.length) h += `<div class="card empty">ไม่มีรายการในเดือนนี้<br><span class="small">กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึก</span></div>`;
+  else h += `<div class="card list">` + list.map((x) => {
+    const c = cardById(x.cardId);
+    return `<div class="row clickable" data-act="txn-edit" data-id="${x.id}">${c ? chip(c) : ''}
+      <div class="grow"><div class="title">${esc(x.desc || '(ไม่มีชื่อ)')}</div>
+      <div class="meta">${fmtD(parseIso(x.date))} · ${esc((CAT_BY_ID[x.category] || CAT_BY_ID.other).label)}</div></div>
+      <div class="amt" style="${Number(x.amount) < 0 ? 'color:var(--ok)' : ''}">${money(x.amount)}</div></div>`;
+  }).join('') + `</div>`;
+  return h;
+}
+
+function renderSettings() {
+  const s = state.settings;
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const permText = { granted: '<span class="badge b-ok">เปิดแล้ว</span>', denied: '<span class="badge b-danger">ถูกปิดในเบราว์เซอร์</span>', default: '<span class="badge b-muted">ยังไม่เปิด</span>', unsupported: '<span class="badge b-muted">อุปกรณ์ไม่รองรับ</span>' }[perm];
+  return `
+  <h2>🔔 การแจ้งเตือน</h2>
+  <div class="card pad">
+    <p style="margin-top:0">แจ้งเตือนบนเครื่อง ${permText}</p>
+    <p class="small muted">แอปจะเตือนเมื่อเปิดแอป (บิลใกล้ครบกำหนด / เลยกำหนด) — ถ้าอยากได้การเตือน <b>แม้ไม่ได้เปิดแอป</b> ให้ใช้ “เพิ่มลงปฏิทิน” หรือ “Google Apps Script” ด้านล่าง<br>iPhone: ต้อง “เพิ่มไปยังหน้าจอโฮม” ก่อน จึงจะเปิดแจ้งเตือนได้</p>
+    <label class="f"><span>เตือนล่วงหน้ากี่วัน (คั่นด้วยจุลภาค, 0 = วันครบกำหนด)</span>
+      <input id="remindDays" value="${esc(s.remindDays.join(', '))}" inputmode="numeric"></label>
+    <div class="btns">
+      <button class="btn primary" data-act="notif-enable">เปิดการแจ้งเตือน</button>
+      <button class="btn" data-act="notif-test">ทดสอบแจ้งเตือน</button>
+    </div>
+  </div>
+
+  <h2>📅 เพิ่มลงปฏิทินมือถือ</h2>
+  <div class="card pad">
+    <p class="small muted" style="margin-top:0">ส่งออกวันครบกำหนดชำระ 12 เดือนข้างหน้าเป็นไฟล์ <code>.ics</code> พร้อมเตือนล่วงหน้า 3 วันและ 1 วัน (09:00 น.) เปิดไฟล์ด้วย Google Calendar / ปฏิทิน iPhone — เตือนได้แม้ไม่ได้เปิดแอป</p>
+    <label class="check"><input type="checkbox" id="icsStmt"> รวมวันตัดรอบบัญชีด้วย</label>
+    <button class="btn primary" data-act="ics" ${state.cards.length ? '' : 'disabled'}>⬇ ดาวน์โหลดไฟล์ปฏิทิน</button>
+  </div>
+
+  <h2>☁️ เตือนทางอีเมล / LINE (Google Apps Script)</h2>
+  <div class="card pad">
+    <p class="small muted" style="margin-top:0">ส่งสรุปกำหนดชำระไปยัง Apps Script ของคุณเอง แล้ว Apps Script จะส่งอีเมล (และ LINE ถ้าตั้งค่า) ทุกเช้า ดูวิธีติดตั้งใน README · ข้อมูลที่ส่ง: ชื่อบัตร, 4 หลักท้าย, วันที่ และยอดบิล เท่านั้น</p>
+    <label class="f"><span>Web App URL</span><input id="gasUrl" value="${esc(s.gasUrl)}" placeholder="https://script.google.com/macros/s/.../exec"></label>
+    <label class="f"><span>SYNC_KEY (ได้จากการรัน setup ใน Apps Script)</span><input id="syncKey" value="${esc(s.syncKey)}" autocomplete="off"></label>
+    <div class="btns">
+      <button class="btn primary" data-act="gas-save">บันทึก & ซิงก์</button>
+      <button class="btn" data-act="gas-test">ส่งข้อความทดสอบ</button>
+    </div>
+    <p class="small ${s.lastSyncError ? '' : 'muted'}" style="margin-bottom:0;${s.lastSyncError ? 'color:var(--danger)' : ''}">
+      ${s.lastSyncError ? '⚠ ' + esc(s.lastSyncError) : s.lastSync ? 'ซิงก์ล่าสุด ' + esc(new Date(s.lastSync).toLocaleString('th-TH')) : 'ยังไม่ได้เชื่อมต่อ'}</p>
+  </div>
+
+  <h2>🔒 ล็อกแอป</h2>
+  <div class="card pad">
+    <p class="small muted" style="margin-top:0">${s.lock && s.lock.enabled ? 'เปิดอยู่ — ต้องใส่รหัสผ่านทุกครั้งที่เปิดแอปใหม่' : 'ปิดอยู่'}</p>
+    <label class="f"><span>ตั้ง/เปลี่ยนรหัสผ่าน</span><input type="password" id="newLockPw" autocomplete="new-password" placeholder="รหัสผ่านใหม่"></label>
+    <div class="btns">
+      <button class="btn primary" data-act="lock-set">บันทึกรหัสและเปิดล็อก</button>
+      ${s.lock && s.lock.enabled ? '<button class="btn" data-act="lock-now">ล็อกเดี๋ยวนี้</button><button class="btn danger" data-act="lock-off">ปิดล็อก</button>' : ''}
+    </div>
+  </div>
+
+  <h2>💾 ข้อมูล</h2>
+  <div class="card pad">
+    <p class="small muted" style="margin-top:0">ข้อมูลทั้งหมดเก็บอยู่ในเครื่องนี้เท่านั้น (ไม่มีการเก็บเลขบัตรเต็มหรือรหัสผ่าน) — ควรสำรองไว้เป็นระยะ หรือใช้ย้ายไปเครื่องใหม่</p>
+    <div class="btns">
+      <button class="btn" data-act="backup">⬇ สำรองข้อมูล (JSON)</button>
+      <label class="btn">⬆ กู้คืนข้อมูล<input type="file" id="restoreFile" accept=".json,application/json" hidden></label>
+      <button class="btn" data-act="demo">โหลดข้อมูลตัวอย่าง</button>
+      <button class="btn danger" data-act="wipe">ลบข้อมูลทั้งหมด</button>
+    </div>
+  </div>
+  <p class="small muted" style="text-align:center;margin-top:18px">บัตรของฉัน v1 · ${state.cards.length} บัตร · ${state.statements.length} บิล · ${state.installments.length} รายการผ่อน · ${state.txns.length} รายการใช้จ่าย</p>`;
+}
+
+/* ============================== ฟอร์ม (sheet) ============================== */
+const sheet = document.getElementById('sheet');
+let sheetSubmit = null;
+function openSheet(title, body, onSubmit, footer) {
+  sheetSubmit = onSubmit;
+  sheet.innerHTML = `<form id="sheetForm" novalidate>
+    <div class="sheet-h"><b>${title}</b><button type="button" class="x" data-act="close" aria-label="ปิด">×</button></div>
+    <div class="sheet-b">${body}
+    ${footer !== undefined ? footer : `<button class="btn primary block" type="submit">บันทึก</button>`}</div></form>`;
+  if (!sheet.open) sheet.showModal();
+}
+function closeSheet() { if (sheet.open) sheet.close(); sheetSubmit = null; }
+sheet.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!sheetSubmit) return;
+  const fd = Object.fromEntries(new FormData(e.target).entries());
+  e.target.querySelectorAll('input[type=checkbox]').forEach((c) => { fd[c.name] = c.checked; });
+  if (sheetSubmit(fd) !== false) closeSheet();
+});
+sheet.addEventListener('click', (e) => { if (e.target === sheet) closeSheet(); });
+
+const cardOptions = (sel) => state.cards.map((c) => `<option value="${c.id}" ${c.id === sel ? 'selected' : ''}>${esc(cardLabel(c))}</option>`).join('');
+const num = (v) => { const n = parseFloat(String(v ?? '').replace(/[,฿\s]/g, '')); return isFinite(n) ? n : 0; };
+const dayNum = (v) => { const n = parseInt(v, 10); return n >= 1 && n <= 31 ? n : null; };
+
+function cardForm(card) {
+  const c = card || { issuer: 'kbank', name: '', last4: '', limit: '', statementDay: '', dueDay: '', color: '', note: '' };
+  openSheet(card ? 'แก้ไขบัตร' : 'เพิ่มบัตร', `
+    <label class="f"><span>ธนาคาร / ผู้ออกบัตร</span><select name="issuer">${Object.entries(ISSUERS).map(([k, v]) => `<option value="${k}" ${k === c.issuer ? 'selected' : ''}>${esc(v.name)}${v.app ? ' — ' + esc(v.app) : ''}</option>`).join('')}</select></label>
+    <label class="f"><span>ชื่อบัตร</span><input name="name" value="${esc(c.name)}" placeholder="เช่น The Wisdom, M Visa, SPayLater" required></label>
+    <div class="grid2">
+      <label class="f"><span>วันตัดรอบบัญชี (1–31)</span><input name="statementDay" value="${esc(c.statementDay)}" inputmode="numeric" required></label>
+      <label class="f"><span>วันครบกำหนดชำระ (1–31)</span><input name="dueDay" value="${esc(c.dueDay)}" inputmode="numeric" required></label>
+    </div>
+    <p class="hint">ดูได้จากใบแจ้งยอด (Statement date / Payment due date) ถ้าเดือนไหนไม่มีวันที่นั้น จะใช้วันสุดท้ายของเดือน</p>
+    <label class="f"><span>เลข 4 หลักท้าย (ไม่บังคับ)</span><input name="last4" value="${esc(c.last4)}" maxlength="4" inputmode="numeric" pattern="[0-9]*"></label>
+    <label class="f"><span>สีบัตร (ไม่บังคับ)</span><input name="color" type="color" value="${esc(c.color || ISSUERS[c.issuer]?.color || '#475569')}"></label>
+    <label class="f"><span>หมายเหตุ</span><input name="note" value="${esc(c.note || '')}" placeholder="เช่น ใช้เติมน้ำมัน, cashback 5%"></label>
+    ${card ? `<button type="button" class="btn danger block" style="margin-bottom:10px" data-act="card-del" data-id="${card.id}">ลบบัตรนี้</button>` : ''}`,
+  (f) => {
+    const sd = dayNum(f.statementDay), dd = dayNum(f.dueDay);
+    if (!f.name.trim()) return toast('กรุณากรอกชื่อบัตร'), false;
+    if (!sd || !dd) return toast('วันตัดรอบ/วันครบกำหนดต้องเป็น 1–31'), false;
+    if (f.last4 && !/^\d{4}$/.test(f.last4)) return toast('เลขท้ายต้องเป็นตัวเลข 4 หลัก'), false;
+    const data = { issuer: f.issuer, name: f.name.trim(), last4: f.last4, statementDay: sd, dueDay: dd, color: f.color === ISSUERS[f.issuer].color ? '' : f.color, note: f.note };
+    if (card) Object.assign(card, data); else state.cards.push({ id: uid(), ...data });
+    save(); toast('บันทึกบัตรแล้ว');
+  });
+  const issuerSel = sheet.querySelector('[name=issuer]'), colorIn = sheet.querySelector('[name=color]');
+  issuerSel.addEventListener('change', () => { colorIn.value = ISSUERS[issuerSel.value].color; });
+}
+
+function cardView(card) {
+  if (!hasDates(card)) return cardForm(card);
+  const t = today(), b = currentBill(card, t);
+  const hist = state.statements.filter((s) => s.cardId === card.id).sort((a, z) => z.cycle.localeCompare(a.cycle));
+  const insts = state.installments.filter((p) => p.cardId === card.id && instStatus(p, t).active);
+  const best = bestCardsToday(t).find((x) => x.card.id === card.id);
+  openSheet(esc(cardLabel(card)), `
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="card tile"><div class="lbl">รอบบิลล่าสุด</div><div class="val" style="font-size:16px">${fmtDY(b.S)}</div><div class="sub">ครบกำหนด ${fmtDY(b.D)}</div></div>
+      <div class="card tile"><div class="lbl">ตัดรอบถัดไป</div><div class="val" style="font-size:16px">${fmtDY(b.nextS)}</div><div class="sub">รูดวันนี้ปลอดดอกเบี้ย ${best.free} วัน</div></div>
+    </div>
+    <p>สถานะรอบนี้: ${statusBadge(b)} ${b.st ? money(b.st.amount) : ''}</p>
+    ${card.note ? `<p class="muted small">📝 ${esc(card.note)}</p>` : ''}
+    <div class="btns" style="margin-bottom:14px">
+      <button type="button" class="btn primary" data-act="stmt-edit" data-card="${card.id}" data-key="${b.key}">กรอกยอดบิล</button>
+      <button type="button" class="btn" data-act="card-edit" data-id="${card.id}">แก้ไขบัตร</button>
+    </div>
+    ${insts.length ? `<h2 style="font-size:14px">ผ่อนอยู่ (${money(insts.reduce((s, p) => s + Number(p.monthly), 0))}/เดือน)</h2><div class="card list">${insts.map((p) => instRow({ p, s: instStatus(p, t) })).join('')}</div>` : ''}
+    <h2 style="font-size:14px">ประวัติบิล</h2>
+    ${hist.length ? `<div class="card list">${hist.map((s) => {
+      const D = dueFor(card, keyToStmt(card, s.cycle)), od = !s.paid && Number(s.amount) > 0 && t > D;
+      return `<div class="row clickable" data-act="stmt-edit" data-card="${card.id}" data-key="${s.cycle}">
+        <div class="grow"><div class="title">รอบ ${fmtKey(s.cycle)}</div><div class="meta">ครบกำหนด ${fmtDY(D)}</div></div>
+        <div class="amt">${money(s.amount)}<div>${s.paid ? '<span class="badge b-ok">จ่ายแล้ว</span>' : od ? '<span class="badge b-danger">ค้างชำระ</span>' : Number(s.amount) <= 0 ? '<span class="badge b-muted">ไม่มียอด</span>' : '<span class="badge b-info">รอชำระ</span>'}</div></div></div>`;
+    }).join('')}</div>` : '<div class="card empty">ยังไม่มีประวัติบิล</div>'}`, null, '');
+}
+
+function stmtForm(cardId, key) {
+  const card = cardById(cardId) || datedCards()[0];
+  if (!card) return toast('กรุณาตั้งวันตัดรอบของบัตรก่อน');
+  if (!hasDates(card)) { toast('ตั้งวันตัดรอบ/วันครบกำหนดของบัตรนี้ก่อน'); return cardForm(card); }
+  key = key || cycleKey(lastStmt(card));
+  const st = findStmt(card.id, key);
+  openSheet(st ? 'แก้ไขยอดบิล' : 'กรอกยอดบิล', `
+    <label class="f"><span>บัตร</span><select name="cardId">${cardOptions(card.id)}</select></label>
+    <label class="f"><span>รอบบิล (เดือนที่ตัดรอบ)</span><input type="month" name="cycle" value="${key}" required></label>
+    <p class="hint" id="stmtDates"></p>
+    <div class="grid2">
+      <label class="f"><span>ยอดเรียกเก็บ (บาท)</span><input name="amount" value="${st ? st.amount : ''}" inputmode="decimal" required></label>
+      <label class="f"><span>ยอดขั้นต่ำ (บาท)</span><input name="minPay" value="${st ? st.minPay || '' : ''}" inputmode="decimal"></label>
+    </div>
+    <p class="hint" id="stmtEst"></p>
+    <label class="check"><input type="checkbox" name="paid" ${st && st.paid ? 'checked' : ''}> ชำระแล้ว</label>
+    <label class="f"><span>ยอดที่ชำระ (ถ้าจ่ายไม่เต็ม)</span><input name="paidAmount" value="${st && st.paidAmount ? st.paidAmount : ''}" inputmode="decimal"></label>
+    ${st ? `<button type="button" class="btn danger block" style="margin-bottom:10px" data-act="stmt-del" data-card="${card.id}" data-key="${key}">ลบบิลนี้</button>` : ''}`,
+  (f) => {
+    const c = cardById(f.cardId);
+    if (!hasDates(c)) return toast('บัตรนี้ยังไม่ได้ตั้งวันตัดรอบ'), false;
+    if (!/^\d{4}-\d{2}$/.test(f.cycle)) return toast('กรุณาเลือกรอบบิล'), false;
+    if (String(f.amount).trim() === '') return toast('กรุณากรอกยอดเรียกเก็บ'), false;
+    const data = { cardId: c.id, cycle: f.cycle, amount: num(f.amount), minPay: num(f.minPay), paid: !!f.paid, paidAmount: num(f.paidAmount), paidDate: f.paid ? iso(today()) : '' };
+    const ex = findStmt(c.id, f.cycle);
+    if (st && st !== ex) state.statements = state.statements.filter((s) => s !== st); // ย้ายรอบ/บัตร
+    if (ex) { if (ex.paid && data.paid) data.paidDate = ex.paidDate || data.paidDate; Object.assign(ex, data); }
+    else state.statements.push({ id: uid(), ...data });
+    save(); toast('บันทึกยอดบิลแล้ว');
+  });
+  const form = sheet.querySelector('form');
+  const upd = () => {
+    const c = cardById(form.cardId.value), k = form.cycle.value;
+    if (!hasDates(c) || !/^\d{4}-\d{2}$/.test(k)) { form.querySelector('#stmtDates').textContent = c && !hasDates(c) ? '⚠ บัตรนี้ยังไม่ได้ตั้งวันตัดรอบ' : ''; form.querySelector('#stmtEst').textContent = ''; return; }
+    const S = keyToStmt(c, k);
+    form.querySelector('#stmtDates').textContent = `ตัดรอบ ${fmtDY(S)} · ครบกำหนดชำระ ${fmtDY(dueFor(c, S))}`;
+    const e = estimateCycle(c, k);
+    form.querySelector('#stmtEst').innerHTML = e.total ? `ประมาณการจากที่บันทึกไว้: ${money(e.total)} (ใช้จ่าย ${money(e.tx)} + ผ่อน ${money(e.inst)}) <button type="button" class="btn sm" data-act="use-est" data-v="${e.total}">ใช้ค่านี้</button>` : '';
+  };
+  form.cardId.addEventListener('change', upd); form.cycle.addEventListener('change', upd); upd();
+}
+
+function instForm(p) {
+  const t = today();
+  const card = p ? cardById(p.cardId) : (datedCards()[0] || state.cards[0]);
+  const curTerm = p && hasDates(card) ? Math.max(1, monthsDiff(p.firstCycle, cycleKey(lastStmt(card, t))) + 1) : 1;
+  openSheet(p ? 'แก้ไขรายการผ่อน' : 'เพิ่มรายการผ่อน', `
+    <label class="f"><span>บัตร</span><select name="cardId">${cardOptions(card && card.id)}</select></label>
+    <label class="f"><span>รายการ</span><input name="name" value="${esc(p ? p.name : '')}" placeholder="เช่น iPhone 17, แอร์ Daikin" required></label>
+    <div class="grid2">
+      <label class="f"><span>ค่างวด / เดือน</span><input name="monthly" value="${p ? p.monthly : ''}" inputmode="decimal" required></label>
+      <label class="f"><span>จำนวนงวดทั้งหมด (0 = ไม่มีกำหนด)</span><input name="months" value="${p ? p.months : ''}" inputmode="numeric" required></label>
+      <label class="f"><span>งวดล่าสุดที่เรียกเก็บแล้ว</span><input name="term" value="${p ? curTerm : 1}" inputmode="numeric"></label>
+      <label class="f"><span>ดอกเบี้ย % ต่อเดือน</span><input name="rate" value="${p && p.rate ? p.rate : ''}" inputmode="decimal" placeholder="0"></label>
+    </div>
+    <p class="hint">“งวดล่าสุด” = งวดที่อยู่ในบิลรอบล่าสุด (เช่น เพิ่งผ่อนงวดแรกในบิลเดือนนี้ = 1, ยังไม่เข้าบิลเลย = 0) แอปจะนับงวดต่อให้อัตโนมัติทุกเดือน</p>
+    ${p ? `<button type="button" class="btn danger block" style="margin-bottom:10px" data-act="inst-del" data-id="${p.id}">ลบรายการนี้</button>` : ''}`,
+  (f) => {
+    const c = cardById(f.cardId), months = parseInt(f.months, 10), monthly = num(f.monthly), term = parseInt(f.term || '0', 10);
+    if (!f.name.trim() || !(months >= 0) || !(monthly > 0)) return toast('กรุณากรอกรายการ ค่างวด และจำนวนงวด'), false;
+    if (!hasDates(c)) return toast('ตั้งวันตัดรอบของบัตรนี้ก่อน (เมนูบัตร)'), false;
+    if (!(term >= 0) || (months > 0 && term > months)) return toast('งวดล่าสุดต้องอยู่ระหว่าง 0 ถึงจำนวนงวด'), false;
+    const firstCycle = months === 0 && p ? p.firstCycle : addMonthsKey(cycleKey(lastStmt(c, t)), -(term - 1));
+    const data = { cardId: c.id, name: f.name.trim(), monthly, months, rate: num(f.rate), firstCycle };
+    if (p) Object.assign(p, data); else state.installments.push({ id: uid(), ...data });
+    save(); toast('บันทึกรายการผ่อนแล้ว');
+  });
+}
+
+function txnForm(x, presetCard) {
+  const cid = x ? x.cardId : presetCard || (txnCard !== 'all' ? txnCard : '') || (cardById(state.settings.lastCardId) ? state.settings.lastCardId : state.cards[0].id);
+  const recent = []; // ร้านค้าที่เคยบันทึก (ใหม่สุดก่อน) สำหรับแตะเลือกเร็ว
+  for (const t of [...state.txns].sort((a, b) => b.date.localeCompare(a.date))) {
+    if (t.desc && !recent.some((r) => r.desc === t.desc)) recent.push(t);
+    if (recent.length >= 8) break;
+  }
+  openSheet(x ? 'แก้ไขรายการ' : '＋ บันทึกการใช้จ่าย', `
+    <label class="f"><span>จำนวนเงิน (บาท)</span><input name="amount" value="${x ? x.amount : ''}" inputmode="decimal" placeholder="0.00" required ${x ? '' : 'autofocus'}
+      style="font-size:28px;font-weight:700;text-align:right;padding:12px 14px" autocomplete="off"></label>
+    <span class="small muted">บัตร</span>
+    <div class="seg" style="flex-wrap:wrap;overflow:visible;margin:4px 0 12px">${state.cards.map((c) => `
+      <label class="btn sm ${c.id === cid ? 'on' : ''}"><input type="radio" name="cardId" value="${c.id}" ${c.id === cid ? 'checked' : ''} hidden>${esc(cardLabel(c).replace(/ ••\d{4}$/, ''))}</label>`).join('')}</div>
+    <label class="f"><span>รายการ / ร้านค้า</span><input name="desc" value="${esc(x ? x.desc : '')}" placeholder="เช่น SHOPEE, 7-ELEVEN, PTT" list="recentDesc" autocomplete="off"></label>
+    <datalist id="recentDesc">${[...new Set(state.txns.map((t) => t.desc).filter(Boolean))].slice(-200).map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
+    ${!x && recent.length ? `<div class="seg" style="flex-wrap:wrap;overflow:visible;margin:-4px 0 12px">${recent.map((r) => `<button type="button" class="btn sm" data-act="pick-desc" data-desc="${esc(r.desc)}" data-cat="${esc(r.category)}">${esc(r.desc)}</button>`).join('')}</div>` : ''}
+    <div class="grid2">
+      <label class="f"><span>หมวดหมู่</span><select name="category">${CATS.map((c) => `<option value="${c.id}" ${x && x.category === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>
+      <label class="f"><span>วันที่</span><input type="date" name="date" value="${x ? x.date : iso(today())}" required></label>
+    </div>
+    <p class="hint">ใส่ค่าติดลบสำหรับเงินคืน / ยกเลิกรายการ</p>
+    ${x ? `<button type="button" class="btn danger block" style="margin-bottom:10px" data-act="txn-del" data-id="${x.id}">ลบรายการ</button>` : ''}`,
+  (f) => {
+    const amount = num(f.amount);
+    if (!f.date || !amount) return toast('กรุณากรอกจำนวนเงิน'), false;
+    if (!cardById(f.cardId)) return toast('กรุณาเลือกบัตร'), false;
+    const data = { cardId: f.cardId, date: f.date, amount, desc: f.desc.trim(), category: f.category };
+    if (x) Object.assign(x, data); else state.txns.push({ id: uid(), ...data });
+    state.settings.lastCardId = f.cardId;
+    txnMonth = f.date.slice(0, 7);
+    save({ noSync: true });
+    const c = cardById(f.cardId);
+    toast(`✓ ${cardLabel(c)} รอบนี้ ${money(cycleSpend(c).amount)}`);
+  });
+  const form = sheet.querySelector('form');
+  form.querySelectorAll('input[name=cardId]').forEach((r) => r.addEventListener('change', () => {
+    form.querySelectorAll('input[name=cardId]').forEach((o) => o.parentElement.classList.toggle('on', o.checked));
+  }));
+  let touched = !!x;
+  form.category.addEventListener('change', () => { touched = true; });
+  form.desc.addEventListener('input', () => {
+    if (touched) return;
+    const v = form.desc.value.trim().toLowerCase();
+    const prev = state.txns.find((t) => t.desc && t.desc.toLowerCase() === v);
+    form.category.value = prev ? prev.category : guessCat(form.desc.value);
+  });
+  if (!x) form.amount.focus();
+}
+
+/* ============================== นำเข้า CSV ============================== */
+function parseCSV(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  text = text.replace(/^﻿/, '');
+  const delim = (text.split('\n')[0].match(/\t/g) || []).length > (text.split('\n')[0].match(/,/g) || []).length ? '\t' : ',';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') q = false;
+      else cell += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell); cell = '';
+      if (row.some((c) => c.trim() !== '')) rows.push(row);
+      row = [];
+    } else cell += ch;
+  }
+  row.push(cell);
+  if (row.some((c) => c.trim() !== '')) rows.push(row);
+  return rows;
+}
+const TH_MON_RE = { 'ม.ค': 1, 'ก.พ': 2, 'มี.ค': 3, 'เม.ย': 4, 'พ.ค': 5, 'มิ.ย': 6, 'ก.ค': 7, 'ส.ค': 8, 'ก.ย': 9, 'ต.ค': 10, 'พ.ย': 11, 'ธ.ค': 12 };
+function normYear(y) {
+  y = parseInt(y, 10);
+  if (y < 100) y = y >= 50 ? 2500 + y : 2000 + y; // 2 หลัก: 68 = พ.ศ. 2568, 25 = ค.ศ. 2025
+  if (y > 2400) y -= 543;
+  return y;
+}
+function parseDateLoose(s) {
+  s = String(s || '').trim();
+  let m;
+  if ((m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))) return validDate(normYear(m[1]), +m[2], +m[3]);
+  if ((m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})/))) return validDate(normYear(m[3]), +m[2], +m[1]);
+  if ((m = s.match(/^(\d{1,2})\s*([ก-๙]{1,3}\.[ก-๙]{1,2})\.?\s*(\d{2,4})/))) {
+    const mon = TH_MON_RE[m[2].replace(/\.$/, '')];
+    if (mon) return validDate(normYear(m[3]), mon, +m[1]);
+  }
+  return null;
+}
+function validDate(y, mo, d) {
+  if (!(mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+  const dt = new Date(y, mo - 1, d);
+  return dt.getMonth() === mo - 1 ? iso(dt) : null;
+}
+function mapCsv(rows) {
+  if (!rows.length) return { items: [], skipped: 0 };
+  const head = rows[0].map((h) => h.trim().toLowerCase());
+  const find = (re) => head.findIndex((h) => re.test(h));
+  let di = find(/date|วันที่|วันทำรายการ/), ai = find(/amount|จำนวน|ยอด|บาท|thb/), ti = find(/desc|รายการ|detail|merchant|ร้าน|รายละเอียด/), ci = find(/cat|หมวด/);
+  let start = 1;
+  if (di < 0 || ai < 0) { di = 0; ti = 1; ai = 2; ci = -1; start = parseDateLoose(rows[0][0]) ? 0 : 1; }
+  const items = []; let skipped = 0;
+  for (const r of rows.slice(start)) {
+    const date = parseDateLoose(r[di]);
+    const raw = String(r[ai] ?? '').trim();
+    const neg = /^\(.*\)$/.test(raw) || /cr$/i.test(raw);
+    let amount = num(raw.replace(/[()]|cr$/gi, ''));
+    if (neg) amount = -Math.abs(amount);
+    if (!date || !raw || !isFinite(amount) || amount === 0) { skipped++; continue; }
+    const desc = ti >= 0 ? String(r[ti] ?? '').trim() : '';
+    const catRaw = ci >= 0 ? String(r[ci] ?? '').trim() : '';
+    const cat = CATS.find((c) => c.id === catRaw || c.label.includes(catRaw) && catRaw) ? CATS.find((c) => c.id === catRaw || c.label.includes(catRaw)).id : guessCat(desc);
+    items.push({ date, amount, desc, category: cat });
+  }
+  return { items, skipped };
+}
+function importForm() {
+  openSheet('นำเข้ารายการใช้จ่าย', `
+    <p class="small muted" style="margin-top:0">รองรับไฟล์ CSV หรือคัดลอกตารางจาก e-Statement มาวาง — ต้องมีคอลัมน์ <b>วันที่, รายการ, จำนวนเงิน</b> (มีแถวหัวตารางหรือไม่ก็ได้) วันที่รองรับ 2025-11-09, 09/11/2568, 09/11/68, 9 พ.ย. 68</p>
+    <label class="f"><span>บัตร</span><select name="cardId">${cardOptions(txnCard !== 'all' ? txnCard : state.cards[0].id)}</select></label>
+    <label class="f"><span>ไฟล์ CSV</span><input type="file" id="csvFile" accept=".csv,.txt,text/csv,text/plain"></label>
+    <label class="f"><span>หรือวางข้อความ</span><textarea name="csv" placeholder="วันที่,รายการ,จำนวนเงิน&#10;01/11/2568,SHOPEE,1250.00&#10;03/11/2568,PTT STATION,1500"></textarea></label>
+    <label class="check"><input type="checkbox" name="dedupe" checked> ข้ามรายการซ้ำ (วันที่ + ยอด + รายการ เหมือนกัน)</label>
+    <p class="hint" id="csvPreview"></p>`,
+  (f) => {
+    const { items, skipped } = mapCsv(parseCSV(f.csv || ''));
+    if (!items.length) return toast('ไม่พบรายการที่อ่านได้'), false;
+    let added = 0, dup = 0;
+    for (const it of items) {
+      if (f.dedupe && state.txns.some((x) => x.cardId === f.cardId && x.date === it.date && Number(x.amount) === it.amount && x.desc === it.desc)) { dup++; continue; }
+      state.txns.push({ id: uid(), cardId: f.cardId, ...it }); added++;
+    }
+    if (added) txnMonth = items[items.length - 1].date.slice(0, 7);
+    save();
+    toast(`นำเข้า ${added} รายการ` + (dup ? ` · ซ้ำ ${dup}` : '') + (skipped ? ` · ข้าม ${skipped}` : ''));
+  });
+  const form = sheet.querySelector('form');
+  const preview = () => {
+    const { items, skipped } = mapCsv(parseCSV(form.csv.value || ''));
+    form.querySelector('#csvPreview').textContent = form.csv.value.trim()
+      ? `อ่านได้ ${items.length} รายการ รวม ${money(items.reduce((s, x) => s + x.amount, 0))}` + (skipped ? ` (ข้าม ${skipped} แถว)` : '') : '';
+  };
+  form.csv.addEventListener('input', preview);
+  form.querySelector('#csvFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    form.csv.value = await file.text(); preview();
+  });
+}
+
+/* ============================== ปฏิทิน .ics ============================== */
+function icsEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/[,;]/g, (m) => '\\' + m).replace(/\n/g, '\\n'); }
+function buildIcs(includeStmt) {
+  const t = today(), stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//MyCards//TH', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:บัตรเครดิต - กำหนดชำระ'];
+  const ymd = (d) => iso(d).replace(/-/g, '');
+  for (const card of datedCards()) {
+    for (let i = 0; i < 12; i++) {
+      const S = shiftCycle(card, lastStmt(card, t), i), D = dueFor(card, S);
+      if (D >= t) {
+        lines.push('BEGIN:VEVENT', `UID:${card.id}-${ymd(D)}-due@mycards`, `DTSTAMP:${stamp}`,
+          `DTSTART;VALUE=DATE:${ymd(D)}`, `DTEND;VALUE=DATE:${ymd(addDays(D, 1))}`,
+          `SUMMARY:${icsEscape('💰 ครบกำหนดชำระ ' + cardLabel(card))}`,
+          `DESCRIPTION:${icsEscape('บิลรอบตัดวันที่ ' + fmtDY(S) + ' — เปิดแอปบัตรของฉันเพื่อดูยอด')}`,
+          'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:ใกล้ครบกำหนดชำระบัตร', 'TRIGGER:-P2DT15H', 'END:VALARM',
+          'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:พรุ่งนี้ครบกำหนดชำระบัตร', 'TRIGGER:-PT15H', 'END:VALARM',
+          'END:VEVENT');
+      }
+      if (includeStmt && S >= t) {
+        lines.push('BEGIN:VEVENT', `UID:${card.id}-${ymd(S)}-stmt@mycards`, `DTSTAMP:${stamp}`,
+          `DTSTART;VALUE=DATE:${ymd(S)}`, `DTEND;VALUE=DATE:${ymd(addDays(S, 1))}`,
+          `SUMMARY:${icsEscape('✂️ ตัดรอบบัตร ' + cardLabel(card))}`, 'TRANSP:TRANSPARENT', 'END:VEVENT');
+      }
+    }
+  }
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ============================== แจ้งเตือน ============================== */
+function alertItems(t = today()) {
+  const rd = state.settings.remindDays;
+  const maxD = Math.max(0, ...rd);
+  return pendingBills(t).filter((b) => b.status === 'overdue' || b.daysLeft <= maxD).map((b) => ({
+    key: `${b.card.id}|${iso(b.D)}|${b.status === 'overdue' ? 'od' : b.daysLeft}`,
+    title: b.status === 'overdue' ? `🚨 เลยกำหนดชำระ ${cardLabel(b.card)}` : `⏰ ${relDays(b.daysLeft)}ครบกำหนดชำระ ${cardLabel(b.card)}`.replace('อีก', 'อีก ').replace(/\s+/g, ' '),
+    body: b.st ? `ยอด ${money(b.st.amount)} · ขั้นต่ำ ${money(b.st.minPay || 0)} · ครบกำหนด ${fmtDY(b.D)}` : `ครบกำหนด ${fmtDY(b.D)} · ยังไม่ได้กรอกยอดบิล`,
+  }));
+}
+async function showNotif(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  const opts = { body, tag, icon: './icon-192.png', badge: './icon-192.png' };
+  try {
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (reg) await reg.showNotification(title, opts); else new Notification(title, opts);
+    return true;
+  } catch (e) { return false; }
+}
+async function checkNotifications() {
+  if (isLocked()) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const todayKey = iso(today()), notified = state.settings.notified;
+  let changed = false;
+  for (const a of alertItems()) {
+    if (notified[a.key] === todayKey) continue;
+    await showNotif(a.title, a.body, a.key);
+    notified[a.key] = todayKey; changed = true;
+  }
+  for (const [k, v] of Object.entries(notified)) if (daysBetween(parseIso(v), today()) > 60) { delete notified[k]; changed = true; }
+  if (changed) persist();
+}
+
+/* ============================== Apps Script sync ============================== */
+function buildSyncPayload() {
+  const t = today(), ev = [], seen = new Set();
+  const push = (card, S) => {
+    const D = dueFor(card, S), key = cycleKey(S), id = card.id + key;
+    if (seen.has(id)) return; seen.add(id);
+    const st = findStmt(card.id, key);
+    ev.push([iso(D), 'd', cardLabel(card), st ? st.amount : null, st ? st.minPay || 0 : null, st && (st.paid || Number(st.amount) <= 0) ? 1 : 0]);
+  };
+  for (const st of state.statements) {
+    const card = cardById(st.cardId);
+    if (hasDates(card) && !st.paid && Number(st.amount) > 0 && dueFor(card, keyToStmt(card, st.cycle)) < t) push(card, keyToStmt(card, st.cycle));
+  }
+  for (const card of datedCards()) {
+    for (let i = -1; i <= 4; i++) {
+      const S = shiftCycle(card, lastStmt(card, t), i);
+      if (dueFor(card, S) >= addDays(t, -7)) push(card, S);
+      if (S >= t) ev.push([iso(S), 's', cardLabel(card)]);
+    }
+  }
+  const inst = state.installments.map((p) => [p, instStatus(p, t)]).filter(([, s]) => s.active)
+    .reduce((s, [p]) => s + Number(p.monthly), 0);
+  return { v: 1, at: new Date().toISOString(), remind: state.settings.remindDays, inst, ev };
+}
+async function gasCall(action, extra = {}) {
+  const { gasUrl, syncKey } = state.settings;
+  if (!gasUrl || !syncKey) throw new Error('ยังไม่ได้ตั้งค่า URL / SYNC_KEY');
+  const res = await fetch(gasUrl, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, key: syncKey, data: buildSyncPayload(), ...extra }),
+  });
+  const out = await res.json().catch(() => { throw new Error('Apps Script ตอบกลับไม่ถูกต้อง (ตรวจสอบสิทธิ์ “ทุกคน”)'); });
+  if (!out.ok) throw new Error(out.error || 'ซิงก์ไม่สำเร็จ');
+  return out;
+}
+let syncTimer = null;
+function scheduleSync() {
+  if (!state.settings.gasUrl || !state.settings.syncKey) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncNow, 1500);
+}
+async function syncNow(silent = true) {
+  try {
+    await gasCall('sync');
+    state.settings.lastSync = new Date().toISOString(); state.settings.lastSyncError = '';
+    if (!silent) toast('☁️ ซิงก์กับ Apps Script แล้ว');
+  } catch (e) {
+    state.settings.lastSyncError = e.message || String(e);
+    if (!silent) toast('⚠ ' + state.settings.lastSyncError);
+  }
+  persist();
+  if (tab === 'settings') render();
+}
+
+/* ============================== ข้อมูลตัวอย่าง ============================== */
+function loadDemo() {
+  const t = today(), c = (issuer, name, last4, limit, sd, dd) => ({ id: uid(), issuer, name, last4, limit, statementDay: sd, dueDay: dd, color: '', note: '' });
+  // บัตรตัวอย่าง (สมมติ)
+  const cards = [
+    c('ktc', 'KTC ตัวอย่าง', '1111', 0, 20, 5), c('kbank', 'กสิกรไทย ตัวอย่าง', '2222', 0, 10, 25),
+    c('scb', 'SCB ตัวอย่าง', '3333', 0, 18, 8), c('uob', 'UOB ตัวอย่าง', '4444', 0, 15, 5),
+    c('bbl', 'กรุงเทพ ตัวอย่าง', '5555', 0, 28, 15), c('ttb', 'ttb ตัวอย่าง', '6666', 0, 5, 25), c('spay', 'SPayLater', '', 0, 25, 10),
+  ];
+  const statements = [], txns = [], installments = [];
+  for (const card of cards) {
+    const S = lastStmt(card, t), prevS = shiftCycle(card, S, -1);
+    const amt = Math.round(3000 + Math.random() * 22000);
+    statements.push({ id: uid(), cardId: card.id, cycle: cycleKey(prevS), amount: Math.round(2000 + Math.random() * 15000), minPay: 0, paid: true, paidAmount: 0, paidDate: '' });
+    if (card.issuer !== 'bbl' && card.issuer !== 'lazada') statements.push({ id: uid(), cardId: card.id, cycle: cycleKey(S), amount: amt, minPay: Math.round(amt * 0.08), paid: card.issuer === 'uob', paidAmount: 0, paidDate: '' });
+  }
+  // บิลค้างจากรอบก่อนของ KTC เพื่อให้เห็นตัวอย่าง "เลยกำหนด"
+  for (const st of statements) {
+    const card = cards.find((x) => x.id === st.cardId);
+    if (dueFor(card, keyToStmt(card, st.cycle)) < t) st.paid = true;
+  }
+  const ktc = cards[0], ktcPrev = findIn(statements, ktc.id, cycleKey(shiftCycle(ktc, lastStmt(ktc, t), -1)));
+  if (ktcPrev && dueFor(ktc, keyToStmt(ktc, ktcPrev.cycle)) < t) ktcPrev.paid = false;
+  const shops = [['HOMEPRO', 'shop'], ['CENTRAL FOOD HALL', 'grocery'], ['BANGCHAK', 'travel'], ['SHOPEE', 'online'], ['7-ELEVEN', 'grocery'], ['PTT STATION', 'travel'], ['GRAB FOOD', 'food'], ['STARBUCKS', 'food'], ['LOTUS', 'grocery'], ['NETFLIX.COM', 'ent'], ['LAZADA', 'online'], ['AIS POSTPAID', 'bills'], ['CENTRAL CHIANGMAI', 'shop'], ['WATSONS', 'health'], ['AGODA', 'trip'], ['PET SHOP', 'pet']];
+  for (let i = 0; i < 160; i++) {
+    const [desc, category] = shops[Math.floor(Math.random() * shops.length)];
+    const d = addDays(t, -Math.floor(Math.random() * 170));
+    const amount = category === 'trip' ? Math.round(1500 + Math.random() * 6000) : category === 'bills' ? 599 : Math.round(60 + Math.random() * 1800);
+    txns.push({ id: uid(), cardId: cards[Math.floor(Math.random() * cards.length)].id, date: iso(d), amount, desc, category });
+  }
+  const mk = (card, name, monthly, months, term, rate = 0) => installments.push({ id: uid(), cardId: card.id, name, monthly, months, rate, firstCycle: addMonthsKey(cycleKey(lastStmt(card, t)), -(term - 1)) });
+  mk(cards[2], 'iPhone 17 Pro', 4383, 10, 4); mk(cards[5], 'แอร์ Daikin 18000 BTU', 1650, 10, 9);
+  mk(cards[0], 'ประกันรถยนต์ชั้น 1', 2150, 6, 2); mk(cards[6], 'โซฟา', 1790, 10, 10);
+  mk(cards[4], 'หูฟัง', 690, 3, 1, 0); mk(cards[3], 'ตู้เย็น', 1290, 10, 3);
+  state = Object.assign(blankState(), { cards, statements, installments, txns, settings: state.settings });
+  save({ noSync: true });
+  toast('โหลดข้อมูลตัวอย่างแล้ว');
+}
+function findIn(arr, cardId, key) { return arr.find((s) => s.cardId === cardId && s.cycle === key); }
+
+/* ============================== event ============================== */
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  tab = b.dataset.tab; render(); window.scrollTo(0, 0);
+});
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'txnMonth' && /^\d{4}-\d{2}$/.test(e.target.value)) { txnMonth = e.target.value; render(); }
+  if (e.target.id === 'remindDays') {
+    const arr = [...new Set(e.target.value.split(/[,\s]+/).map((x) => parseInt(x, 10)).filter((x) => x >= 0 && x <= 30))].sort((a, b) => b - a);
+    state.settings.remindDays = arr.length ? arr : [3, 1, 0];
+    save(); toast('บันทึกแล้ว');
+  }
+  if (e.target.id === 'restoreFile' && e.target.files[0]) {
+    e.target.files[0].text().then((txt) => {
+      try {
+        const s = JSON.parse(txt);
+        if (!s || !Array.isArray(s.cards)) throw new Error();
+        if (!confirm(`กู้คืนข้อมูล ${s.cards.length} บัตร? ข้อมูลปัจจุบันในเครื่องจะถูกแทนที่`)) return;
+        const b = blankState();
+        state = Object.assign(b, s, { settings: Object.assign(b.settings, s.settings || {}) });
+        save(); toast('กู้คืนข้อมูลแล้ว');
+      } catch (err) { toast('ไฟล์ไม่ถูกต้อง'); }
+    });
+  }
+});
+document.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const { act, id } = el.dataset;
+  switch (act) {
+    case 'close': closeSheet(); break;
+    case 'demo':
+      if (state.cards.length && !confirm('แทนที่ข้อมูลปัจจุบันด้วยข้อมูลตัวอย่าง?')) return;
+      loadDemo(); break;
+    case 'card-add': cardForm(); break;
+    case 'lock-set': {
+      const pw = document.getElementById('newLockPw').value;
+      if (pw.length < 4) return toast('รหัสผ่านอย่างน้อย 4 ตัว');
+      await setLockPassword(pw); markUnlocked(); toast('ตั้งรหัสผ่านและเปิดล็อกแล้ว'); render(); break;
+    }
+    case 'lock-now':
+      try { sessionStorage.removeItem('mycards.unlocked'); } catch (err) { /* ignore */ }
+      unlockedMem = false; render(); break;
+    case 'lock-off':
+      if (!confirm('ปิดการล็อกแอป?')) return;
+      state.settings.lock.enabled = false; persist(); toast('ปิดล็อกแล้ว'); render(); break;
+    case 'go-cards': tab = 'cards'; render(); break;
+    case 'card-edit': cardForm(cardById(id)); break;
+    case 'card-view': cardView(cardById(id)); break;
+    case 'card-del': {
+      const c = cardById(id);
+      if (!confirm(`ลบบัตร ${cardLabel(c)} พร้อมบิล รายการผ่อน และรายการใช้จ่ายของบัตรนี้?`)) return;
+      state.cards = state.cards.filter((x) => x.id !== id);
+      state.statements = state.statements.filter((x) => x.cardId !== id);
+      state.installments = state.installments.filter((x) => x.cardId !== id);
+      state.txns = state.txns.filter((x) => x.cardId !== id);
+      if (txnCard === id) txnCard = 'all';
+      closeSheet(); save(); toast('ลบบัตรแล้ว'); break;
+    }
+    case 'stmt-edit': stmtForm(el.dataset.card, el.dataset.key); break;
+    case 'stmt-del':
+      if (!confirm('ลบบิลรอบนี้?')) return;
+      state.statements = state.statements.filter((s) => !(s.cardId === el.dataset.card && s.cycle === el.dataset.key));
+      closeSheet(); save(); break;
+    case 'use-est': sheet.querySelector('[name=amount]').value = el.dataset.v; break;
+    case 'mark-paid': {
+      const st = findStmt(el.dataset.card, el.dataset.key);
+      if (st) { st.paid = true; st.paidDate = iso(today()); save(); toast('✓ บันทึกว่าชำระแล้ว'); }
+      break;
+    }
+    case 'inst-add': instForm(); break;
+    case 'inst-edit': instForm(state.installments.find((p) => p.id === id)); break;
+    case 'inst-del':
+      if (!confirm('ลบรายการผ่อนนี้?')) return;
+      state.installments = state.installments.filter((p) => p.id !== id); closeSheet(); save(); break;
+    case 'txn-add': txnForm(null, el.dataset.card); break;
+    case 'pick-desc': {
+      const form = sheet.querySelector('form');
+      form.desc.value = el.dataset.desc;
+      if (CAT_BY_ID[el.dataset.cat]) form.category.value = el.dataset.cat;
+      break;
+    }
+    case 'txn-edit': txnForm(state.txns.find((x) => x.id === id)); break;
+    case 'txn-del':
+      state.txns = state.txns.filter((x) => x.id !== id); closeSheet(); save(); break;
+    case 'txn-card': txnCard = id; render(); break;
+    case 'month-prev': txnMonth = addMonthsKey(txnMonth, -1); render(); break;
+    case 'month-next': txnMonth = addMonthsKey(txnMonth, 1); render(); break;
+    case 'import': importForm(); break;
+    case 'notif-enable':
+      if (!('Notification' in window)) return toast('อุปกรณ์/เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน (iPhone ต้องเพิ่มไปหน้าจอโฮมก่อน)');
+      if ((await Notification.requestPermission()) === 'granted') { toast('เปิดการแจ้งเตือนแล้ว'); checkNotifications(); }
+      else toast('ไม่ได้รับอนุญาตให้แจ้งเตือน');
+      render(); break;
+    case 'notif-test': {
+      const items = alertItems();
+      const ok = await showNotif(items[0] ? items[0].title : '🔔 ทดสอบการแจ้งเตือน', items[0] ? items[0].body : 'การแจ้งเตือนทำงานปกติ', 'test');
+      if (!ok) toast('ยังไม่ได้เปิดการแจ้งเตือน'); break;
+    }
+    case 'ics': download('credit-card-due-dates.ics', buildIcs(document.getElementById('icsStmt').checked), 'text/calendar;charset=utf-8'); break;
+    case 'gas-save':
+      state.settings.gasUrl = document.getElementById('gasUrl').value.trim();
+      state.settings.syncKey = document.getElementById('syncKey').value.trim();
+      persist();
+      if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(state.settings.gasUrl)) return toast('URL ต้องเป็น https://script.google.com/.../exec'), render();
+      toast('กำลังซิงก์…'); syncNow(false); break;
+    case 'gas-test':
+      try { await gasCall('test'); toast('ส่งข้อความทดสอบแล้ว ตรวจสอบอีเมล/LINE'); }
+      catch (err) { toast('⚠ ' + err.message); }
+      break;
+    case 'backup': download(`mycards-backup-${iso(today())}.json`, JSON.stringify(state, null, 1), 'application/json'); break;
+    case 'wipe':
+      if (!confirm('ลบข้อมูลทั้งหมดในเครื่องนี้? (ควรสำรองข้อมูลก่อน)')) return;
+      state = blankState(); save({ noSync: true }); toast('ลบข้อมูลแล้ว'); break;
+  }
+});
+
+/* ============================== เริ่มต้น ============================== */
+// ล้างข้อมูลจากระบบ e-Statement เดิม (รหัส PDF / รายการอีเมล) ที่เลิกใช้แล้ว
+try { localStorage.removeItem('mycards.pw'); } catch (e) { /* ignore */ }
+['sourceMap', 'imported', 'mailItems', 'mailCheckedAt', 'estmtDays'].forEach((k) => { delete state.settings[k]; });
+render();
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('./sw.js').then(() => checkNotifications()).catch(() => {});
+} else checkNotifications();
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { render(); checkNotifications(); }
+});
+// ซิงก์วันละครั้งเมื่อเปิดแอป เพื่อให้ Apps Script มีข้อมูลรอบบิลใหม่เสมอ
+if (state.settings.gasUrl && state.settings.syncKey && (!state.settings.lastSync || daysBetween(new Date(state.settings.lastSync), new Date()) >= 1)) scheduleSync();
+</script>
+</body>
+</html>
