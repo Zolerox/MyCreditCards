@@ -245,6 +245,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
+const APP_VERSION = '2026.11.10-2';
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -843,7 +844,7 @@ function renderSettings() {
       <button class="btn danger" data-act="wipe">ลบข้อมูลทั้งหมด</button>
     </div>
   </div>
-  <p class="small muted" style="text-align:center;margin-top:18px">บัตรของฉัน v1 · ${state.cards.length} บัตร · ${state.statements.length} บิล · ${state.installments.length} รายการผ่อน · ${state.txns.length} รายการใช้จ่าย</p>`;
+  <p class="small muted" style="text-align:center;margin-top:18px">บัตรของฉัน เวอร์ชัน ${APP_VERSION} · ${state.cards.length} บัตร · ${state.statements.length} บิล · ${state.installments.length} รายการผ่อน · ${state.txns.length} รายการใช้จ่าย</p>`;
 }
 
 /* ============================== ฟอร์ม (sheet) ============================== */
@@ -1431,7 +1432,17 @@ try { localStorage.removeItem('mycards.pw'); } catch (e) { /* ignore */ }
 ['sourceMap', 'imported', 'mailItems', 'mailCheckedAt', 'estmtDays'].forEach((k) => { delete state.settings[k]; });
 render();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('./sw.js').then(() => checkNotifications()).catch(() => {});
+  // อัปเดตอัตโนมัติ: เช็กเวอร์ชันใหม่ทุกครั้งที่เปิด/กลับมาที่แอป แล้วโหลดหน้าใหม่ให้เมื่อมีเวอร์ชันใหม่
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !reloaded) { reloaded = true; location.reload(); }
+  });
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+    checkNotifications();
+    reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+  }).catch(() => {});
 } else checkNotifications();
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 document.addEventListener('visibilitychange', () => {
