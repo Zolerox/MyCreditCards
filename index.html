@@ -150,6 +150,26 @@ input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; margin
 .catbar { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--border); }
 .catbar:first-child { border-top: 0; }
 .catbar .bar { grid-column: 1 / -1; }
+.viz { --series-1: #2a78d6; --series-2: #eb6834; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .viz { --series-1: #3987e5; --series-2: #d95926; } }
+:root[data-theme="dark"] .viz { --series-1: #3987e5; --series-2: #d95926; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin: 10px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.s1, .seg.s1 { background: var(--series-1); }
+.sw.s2, .seg.s2 { background: var(--series-2); }
+.sbars { margin-top: 6px; }
+.sbar { padding: 10px 6px; border-top: 1px solid var(--border); border-radius: 8px; }
+.sbar:first-child { border-top: 0; }
+.sbar.sel { background: var(--primary-soft); }
+.sbar-h { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.sbar-h .grow { flex: 1; }
+.sbar-h .title { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { display: flex; gap: 2px; height: 14px; margin-bottom: 4px; }
+.seg { display: block; height: 100%; min-width: 3px; }
+.seg:first-child { border-radius: 4px 0 0 4px; }
+.seg:last-child { border-radius: 0 4px 4px 0; }
+.seg:only-child { border-radius: 4px; }
 .months { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 10px 14px 0; }
 .months .m { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; min-width: 0; }
 .months .m i { width: 100%; max-width: 34px; background: var(--primary); border-radius: 6px 6px 2px 2px; min-height: 2px; opacity: .85; }
@@ -671,50 +691,76 @@ function instRow({ p, s }) {
     <div class="amt">${money(p.monthly)}<div class="meta">เหลือ ${money(s.remainingAmt)}</div></div></div>`;
 }
 
-function renderTxn() {
-  const all = state.txns.filter((x) => txnCard === 'all' || x.cardId === txnCard);
-  const list = all.filter((x) => x.date.slice(0, 7) === txnMonth).sort((a, b) => b.date.localeCompare(a.date));
-  const total = list.reduce((s, x) => s + Number(x.amount), 0);
-  let h = `<h2>สรุปการใช้จ่าย<span class="sp"></span>
-    <button class="btn sm" data-act="import" ${state.cards.length ? '' : 'disabled'}>⬆ นำเข้า CSV</button>
-    <button class="btn sm primary" data-act="txn-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่ม</button></h2>`;
-  h += `<div class="toolbar">
-    <button class="btn sm" data-act="month-prev">‹</button>
-    <input type="month" id="txnMonth" value="${txnMonth}" style="flex:1;min-width:0">
-    <button class="btn sm" data-act="month-next">›</button></div>`;
-  h += `<div class="seg"><button class="btn sm ${txnCard === 'all' ? 'on' : ''}" data-act="txn-card" data-id="all">ทุกบัตร</button>` +
-    state.cards.map((c) => `<button class="btn sm ${txnCard === c.id ? 'on' : ''}" data-act="txn-card" data-id="${c.id}">${esc(cardLabel(c).replace(/ ••\d{4}$/, ''))}</button>`).join('') + `</div>`;
-
-  // กราฟ 6 เดือนย้อนหลัง
-  const months = [];
-  for (let i = 5; i >= 0; i--) {
-    const k = addMonthsKey(txnMonth, -i);
-    months.push({ k, v: all.filter((x) => x.date.slice(0, 7) === k).reduce((s, x) => s + Number(x.amount), 0) });
-  }
-  const maxV = Math.max(1, ...months.map((m) => m.v));
-  h += `<div class="card" style="margin-bottom:10px">
-    <div class="pad" style="padding-bottom:0"><div class="muted small">ยอดใช้จ่าย ${fmtKey(txnMonth)}</div><div style="font-size:24px;font-weight:700">${money(total)}</div></div>
-    <div class="months">${months.map((m) => `<div class="m ${m.k === txnMonth ? 'cur' : ''}"><i style="height:${(m.v / maxV) * 80}%"></i><span>${fmtKey(m.k)}</span></div>`).join('')}</div>
-    <div class="months-v">${months.map((m) => `<span>${m.v ? (m.v >= 1000 ? (m.v / 1000).toFixed(1) + 'k' : Math.round(m.v)) : '-'}</span>`).join('')}</div></div>`;
-
-  if (list.length) {
-    const byCat = {};
-    for (const x of list) byCat[x.category || 'other'] = (byCat[x.category || 'other'] || 0) + Number(x.amount);
-    const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
-    h += `<h2 style="font-size:14px">ตามหมวดหมู่</h2><div class="card">` + cats.map(([c, v]) => `
-      <div class="catbar"><span>${esc((CAT_BY_ID[c] || CAT_BY_ID.other).label)}</span><b class="amt">${money(v)} <span class="muted small">${total ? ((v / total) * 100).toFixed(0) : 0}%</span></b>
-      <div class="bar"><i style="width:${total > 0 ? Math.max(0, (v / total) * 100) : 0}%"></i></div></div>`).join('') + `</div>`;
-    if (txnCard === 'all' && state.cards.length > 1) {
-      const byCard = {};
-      for (const x of list) byCard[x.cardId] = (byCard[x.cardId] || 0) + Number(x.amount);
-      h += `<h2 style="font-size:14px">ตามบัตร</h2><div class="card list">` + Object.entries(byCard).sort((a, b) => b[1] - a[1]).map(([cid, v]) => {
-        const c = cardById(cid);
-        return `<div class="row">${c ? chip(c) : ''}<div class="grow title">${c ? esc(cardLabel(c)) : 'บัตรที่ถูกลบ'}</div><div class="amt">${money(v)}</div></div>`;
-      }).join('') + `</div>`;
+/** ยอดค้างจ่ายของบัตร: บิลที่ตัดแล้วแต่ยังไม่จ่าย + รอบปัจจุบันที่ยังไม่ตัด แยก ใช้จ่าย / ผ่อน (บิลที่จ่ายแล้วไม่นับ) */
+function outstandingOf(card, t = today()) {
+  const parts = [];
+  if (hasDates(card)) {
+    // บิลที่บันทึกยอดแล้ว แต่ยังไม่จ่าย (ทุกรอบ)
+    for (const st of state.statements.filter((x) => x.cardId === card.id && !x.paid && Number(x.amount) > 0)) {
+      const amt = Number(st.amount), inst = Math.min(amt, instForCycle(card.id, st.cycle));
+      const D = dueFor(card, keyToStmt(card, st.cycle));
+      parts.push({ kind: 'billed', key: st.cycle, spend: amt - inst, inst, due: D, est: false, overdue: t > D });
     }
+    // บิลรอบล่าสุดที่ตัดแล้ว แต่ยังไม่ได้กรอกยอด → ประมาณจากรายการที่บันทึก
+    const b = currentBill(card, t);
+    if (b.status === 'unknown') {
+      const e = estimateCycle(card, b.key);
+      if (e.total) parts.push({ kind: 'billed', key: b.key, spend: e.tx, inst: e.inst, due: b.D, est: true, overdue: false });
+    }
+    const cs = cycleSpend(card, t);
+    parts.push({ kind: 'current', key: cycleKey(cs.cutDate), spend: cs.amount, inst: instForCycle(card.id, cycleKey(cs.cutDate)), cut: cs.cutDate });
+  } else {
+    parts.push({ kind: 'current', key: cycleKey(t), spend: cycleSpend(card, t).amount, inst: 0, cut: null });
   }
-  h += `<h2 style="font-size:14px">รายการ (${list.length})</h2>`;
-  if (!list.length) h += `<div class="card empty">ไม่มีรายการในเดือนนี้<br><span class="small">กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึก</span></div>`;
+  const spend = parts.reduce((s, x) => s + x.spend, 0), inst = parts.reduce((s, x) => s + x.inst, 0);
+  return { card, parts, spend, inst, total: spend + inst };
+}
+/** รายการใช้จ่ายที่อยู่ในยอดค้างจ่าย (รอบที่ยังไม่จ่าย + รอบปัจจุบัน) */
+function outstandingTxns(o) {
+  const card = o.card, ranges = [];
+  for (const p of o.parts) {
+    if (!hasDates(card)) { ranges.push([new Date(today().getFullYear(), today().getMonth(), 0), null]); continue; }
+    const S = p.kind === 'current' ? p.cut : keyToStmt(card, p.key);
+    ranges.push([shiftCycle(card, S, -1), S]);
+  }
+  return state.txns.filter((x) => x.cardId === card.id).filter((x) => {
+    const d = parseIso(x.date);
+    return ranges.some(([a, b]) => d > a && (!b || d <= b));
+  });
+}
+function renderTxn() {
+  const t = today();
+  const rows = state.cards.map((c) => outstandingOf(c, t)).filter((o) => o.total > 0.004).sort((a, b) => b.total - a.total);
+  const tot = rows.reduce((s, o) => s + o.total, 0), sp = rows.reduce((s, o) => s + o.spend, 0), ins = rows.reduce((s, o) => s + o.inst, 0);
+  const billed = rows.reduce((s, o) => s + o.parts.filter((p) => p.kind === 'billed').reduce((a, p) => a + p.spend + p.inst, 0), 0);
+  const maxV = Math.max(1, ...rows.map((o) => o.total));
+  let h = `<h2>สรุปยอดค้างจ่ายตามบัตร<span class="sp"></span>
+    <button class="btn sm" data-act="import" ${state.cards.length ? '' : 'disabled'}>⬆ CSV</button>
+    <button class="btn sm primary" data-act="txn-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่ม</button></h2>`;
+  h += `<div class="card pad viz" style="margin-bottom:10px">
+    <div class="muted small">ยอดที่ต้องจ่ายทั้งหมด (ยังไม่ชำระ)</div>
+    <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums">${money(tot)}</div>
+    <div class="small muted">บิลตัดแล้วรอจ่าย ${money(billed)} · รอบปัจจุบัน (ยังไม่ตัด) ${money(tot - billed)}</div>
+    <div class="legend"><span><i class="sw s1"></i>ใช้จ่าย ${money(sp)}</span><span><i class="sw s2"></i>ผ่อนชำระ ${money(ins)}</span></div>
+    ${rows.length ? `<div class="sbars" role="list">` + rows.map((o) => {
+      const c = o.card, w = (v) => (v / maxV) * 100;
+      const sub = o.parts.map((p) => p.kind === 'current'
+        ? `รอบนี้${p.cut ? ' (ตัด ' + fmtD(p.cut) + ')' : ''} ${money(p.spend + p.inst)}`
+        : `${p.overdue ? '⚠ เลยกำหนด' : 'บิล ' + fmtKey(p.key)}${p.est ? ' ~' : ' '}${money(p.spend + p.inst)} จ่าย ${fmtD(p.due)}`).filter((x) => !/ ฿0$/.test(x)).join(' · ');
+      return `<div class="sbar clickable ${txnCard === c.id ? 'sel' : ''}" role="listitem" data-act="txn-card" data-id="${txnCard === c.id ? 'all' : c.id}"
+          title="${esc(cardLabel(c))}: ใช้จ่าย ${money(o.spend)} · ผ่อน ${money(o.inst)}">
+        <div class="sbar-h">${chip(c)}<span class="grow title">${esc(cardLabel(c).replace(/ ••\d{4}$/, ''))}</span><b class="amt">${money(o.total)}</b></div>
+        <div class="track">${o.spend > 0 ? `<i class="seg s1" style="width:${w(o.spend)}%"></i>` : ''}${o.inst > 0 ? `<i class="seg s2" style="width:${w(o.inst)}%"></i>` : ''}</div>
+        <div class="meta">ใช้จ่าย ${money(o.spend)} · ผ่อน ${money(o.inst)}${sub ? '<br>' + sub : ''}</div>
+      </div>`;
+    }).join('') + `</div>` : `<div class="empty">✅ ไม่มียอดค้างจ่าย</div>`}
+  </div>
+  <p class="small muted">นับ: บิลที่ตัดรอบแล้วแต่ยังไม่กด “จ่ายแล้ว” + ยอดรอบปัจจุบันที่ยังไม่ตัด (รวมค่างวดผ่อนของรอบนั้น) · บิลที่ยังไม่กรอกยอดใช้ยอดประมาณ (~) · แตะแท่งเพื่อดูรายการของบัตรนั้น</p>`;
+
+  const sel = txnCard !== 'all' && cardById(txnCard);
+  const list = (sel ? rows.filter((o) => o.card.id === txnCard) : rows).flatMap((o) => outstandingTxns(o)).sort((a, b) => b.date.localeCompare(a.date));
+  h += `<h2 style="font-size:14px">รายการใช้จ่าย${sel ? ' · ' + esc(cardLabel(sel)) : 'ที่ยังไม่ชำระ'} (${list.length})<span class="sp"></span>${sel ? '<button class="btn sm" data-act="txn-card" data-id="all">ดูทุกบัตร</button>' : ''}</h2>`;
+  if (!list.length) h += `<div class="card empty">ไม่มีรายการ<br><span class="small">กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึก</span></div>`;
   else h += `<div class="card list">` + list.map((x) => {
     const c = cardById(x.cardId);
     return `<div class="row clickable" data-act="txn-edit" data-id="${x.id}">${c ? chip(c) : ''}
