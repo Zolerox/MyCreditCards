@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-4';
+const APP_VERSION = '2026.11.10-5'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -866,7 +866,8 @@ function renderSettings() {
       <button class="btn danger" data-act="wipe">ลบข้อมูลทั้งหมด</button>
     </div>
   </div>
-  <p class="small muted" style="text-align:center;margin-top:18px">บัตรของฉัน เวอร์ชัน ${APP_VERSION} · ${state.cards.length} บัตร · ${state.statements.length} บิล · ${state.installments.length} รายการผ่อน · ${state.txns.length} รายการใช้จ่าย</p>`;
+  <div style="text-align:center;margin-top:18px"><button class="btn" data-act="check-update">🔄 ตรวจหาอัปเดตแอป</button></div>
+  <p class="small muted" style="text-align:center;margin-top:10px">บัตรของฉัน เวอร์ชัน ${APP_VERSION} · ${state.cards.length} บัตร · ${state.statements.length} บิล · ${state.installments.length} รายการผ่อน · ${state.txns.length} รายการใช้จ่าย</p>`;
 }
 
 /* ============================== ฟอร์ม (sheet) ============================== */
@@ -1383,6 +1384,7 @@ document.addEventListener('click', async (e) => {
       if (state.cards.length && !confirm('แทนที่ข้อมูลปัจจุบันด้วยข้อมูลตัวอย่าง?')) return;
       loadDemo(); break;
     case 'card-add': cardForm(); break;
+    case 'check-update': toast('กำลังตรวจหาอัปเดต…'); checkForUpdate(true); break;
     case 'logo-clear': sheet.querySelector('[name=logo]').value = ''; document.getElementById('logoPrev').hidden = true; break;
     case 'lock-set': {
       const pw = document.getElementById('newLockPw').value;
@@ -1472,6 +1474,35 @@ document.addEventListener('click', async (e) => {
 // ล้างข้อมูลจากระบบ e-Statement เดิม (รหัส PDF / รายการอีเมล) ที่เลิกใช้แล้ว
 try { localStorage.removeItem('mycards.pw'); } catch (e) { /* ignore */ }
 ['sourceMap', 'imported', 'mailItems', 'mailCheckedAt', 'estmtDays'].forEach((k) => { delete state.settings[k]; });
+/* ============================== อัปเดตแอป ============================== */
+// ถาม GitHub ตรงๆ ว่าเวอร์ชันล่าสุดคืออะไร (ไม่ผ่าน cache) ถ้าไม่ตรง → ล้าง cache + service worker แล้วโหลดใหม่
+async function hardReload(v) {
+  try { for (const k of await caches.keys()) await caches.delete(k); } catch (e) { /* ignore */ }
+  try { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } catch (e) { /* ignore */ }
+  location.replace(location.pathname + '?v=' + encodeURIComponent(v || Date.now()));
+}
+async function checkForUpdate(manual) {
+  try {
+    const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
+    const { v } = await res.json();
+    if (!v || v === APP_VERSION) { if (manual) toast('✓ เป็นเวอร์ชันล่าสุดแล้ว (' + APP_VERSION + ')'); return; }
+    let tried = '';
+    try { tried = sessionStorage.getItem('mycards.updTried') || ''; } catch (e) { /* ignore */ }
+    if (!manual && tried === v) return; // กันโหลดวนถ้า CDN ยังส่งไฟล์เก่า
+    try { sessionStorage.setItem('mycards.updTried', v); } catch (e) { /* ignore */ }
+    toast('กำลังอัปเดตเป็นเวอร์ชัน ' + v + '…');
+    setTimeout(() => hardReload(v), 400);
+  } catch (e) { if (manual) toast('ตรวจหาอัปเดตไม่ได้ (ออฟไลน์?)'); }
+}
+if (location.protocol !== 'file:') {
+  checkForUpdate(false);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(false); });
+}
+if (/[?&]v=/.test(location.search)) { // เพิ่งอัปเดตเสร็จ — ล้าง ?v= ออกจาก URL
+  history.replaceState(null, '', location.pathname);
+  setTimeout(() => toast('✓ อัปเดตเป็นเวอร์ชัน ' + APP_VERSION + ' แล้ว'), 300);
+}
+
 render();
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   // อัปเดตอัตโนมัติ: เช็กเวอร์ชันใหม่ทุกครั้งที่เปิด/กลับมาที่แอป แล้วโหลดหน้าใหม่ให้เมื่อมีเวอร์ชันใหม่
