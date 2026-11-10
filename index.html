@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-7'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.10-8'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -692,7 +692,7 @@ function renderCards() {
 function renderInst() {
   const t = today();
   const rows = state.installments.map((p) => ({ p, s: instStatus(p, t), card: cardById(p.cardId) }));
-  const active = rows.filter((r) => r.s.active), done = rows.filter((r) => !r.s.active);
+  const active = rows.filter((r) => r.s.active); // ผ่อนครบแล้วไม่แสดง (ข้อมูลยังเก็บไว้ใช้คำนวณบิลที่ยังไม่จ่าย)
   const monthly = active.reduce((s, r) => s + Number(r.p.monthly), 0);
   const remain = active.reduce((s, r) => s + r.s.remainingAmt, 0);
   let h = `<h2>ผ่อนชำระ<span class="sp"></span><button class="btn sm primary" data-act="inst-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่มรายการผ่อน</button></h2>`;
@@ -707,7 +707,6 @@ function renderInst() {
     h += `<h2 style="font-size:14px">${card ? chip(card) + ' ' + esc(cardLabel(card)) : 'บัตรที่ถูกลบ'}<span class="sp"></span><span class="muted small">${money(list.reduce((s, r) => s + Number(r.p.monthly), 0))}/เดือน</span></h2>`;
     h += `<div class="card list">` + list.map(instRow).join('') + `</div>`;
   }
-  if (done.length) h += `<h2 class="muted">ผ่อนครบแล้ว (${done.length})</h2><div class="card list">` + done.map(instRow).join('') + `</div>`;
   return h;
 }
 function instRow({ p, s }) {

@@ -1,5 +1,5 @@
 // Service worker: ทำให้แอปเปิดได้แม้ออฟไลน์ และรองรับการกดแจ้งเตือน
-const CACHE_NAME = 'my-cards-v24';
+const CACHE_NAME = 'my-cards-v25';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
