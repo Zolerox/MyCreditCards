@@ -159,6 +159,20 @@ input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; margin
 .viz { --series-1: #2a78d6; --series-2: #eb6834; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .viz { --series-1: #3987e5; --series-2: #d95926; } }
 :root[data-theme="dark"] .viz { --series-1: #3987e5; --series-2: #d95926; }
+.viz { --c1: #2a78d6; --c2: #eb6834; --c3: #1baf7a; --c4: #eda100; --c5: #e87ba4; --c6: #008300; --c7: #6250d6; --c8: #e34948; --c-other: #9a9a94; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .viz { --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767; --c-other: #6f6f6a; } }
+:root[data-theme="dark"] .viz { --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500; --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767; --c-other: #6f6f6a; }
+.donut-wrap { display: flex; justify-content: center; margin: 8px 0 4px; }
+.donut { width: 220px; max-width: 70vw; height: auto; }
+.donut .d-lbl { font-size: 11px; fill: var(--muted); }
+.donut .d-val { font-size: 15px; font-weight: 700; fill: var(--text); }
+.d-legend { margin-top: 6px; }
+.d-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-top: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+.d-row:first-child { border-top: 0; }
+.d-row.sel { background: var(--primary-soft); }
+.d-row .grow { flex: 1; min-width: 0; }
+.d-row .amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.d-row .pct { width: 36px; text-align: right; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin: 10px 0 4px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
@@ -251,7 +265,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-11'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.10-12'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -857,9 +871,40 @@ function catData() {
   const list = Object.values(groups).filter((g) => Math.abs(g.total) > 0.004).sort((a, b) => b.total - a.total);
   return { list, total: list.reduce((s, g) => s + g.total, 0), count: txns.length };
 }
+// สีหมวด: ผูกกับหมวด (ไม่ใช่อันดับ) ตามลำดับ palette ที่ตรวจความต่างของสีแล้ว — หมวดที่ไม่มีสีรวมเป็น "อื่นๆ"
+const CAT_SLOT = { shop: 1, __inst: 2, food: 3, grocery: 4, online: 5, bills: 6, ent: 7, travel: 8 };
+function donutChart(d) {
+  const pos = d.list.filter((g) => g.total > 0);
+  const slots = [], rest = [];
+  for (const g of pos) (CAT_SLOT[g.id] ? slots : rest).push(g);
+  slots.sort((a, b) => CAT_SLOT[a.id] - CAT_SLOT[b.id]); // วางชิ้นตามลำดับสี เพื่อให้สีที่อยู่ติดกันแยกออกจากกันได้
+  const segs = slots.map((g) => ({ g, color: `var(--c${CAT_SLOT[g.id]})`, label: g.label, total: g.total, id: g.id }));
+  if (rest.length) segs.push({ color: 'var(--c-other)', label: rest.length === 1 ? rest[0].label : '⋯ อื่นๆ (' + rest.map((g) => g.label.replace(/^\S+\s/, '')).join(', ') + ')', total: rest.reduce((s, g) => s + g.total, 0), id: rest.length === 1 ? rest[0].id : '', rest });
+  const sum = segs.reduce((s, x) => s + x.total, 0) || 1;
+  const R = 70, C = 2 * Math.PI * R, gap = segs.length > 1 ? 2.5 : 0;
+  let off = 0;
+  const arcs = segs.map((x) => {
+    const len = (x.total / sum) * C, dash = Math.max(0.5, len - gap);
+    const el = `<circle r="${R}" cx="90" cy="90" fill="none" stroke="${x.color}" stroke-width="30" stroke-dasharray="${dash} ${C - dash}" stroke-dashoffset="${-off}"
+      class="${x.id ? 'clickable' : ''}" ${x.id ? `data-act="cat-sel" data-id="${x.id}"` : ''} opacity="${catSel && catSel !== x.id ? 0.35 : 1}"><title>${esc(x.label)}: ${money(x.total)} (${Math.round((x.total / sum) * 100)}%)</title></circle>`;
+    off += len;
+    return el;
+  }).join('');
+  return `<div class="donut-wrap">
+    <svg viewBox="0 0 180 180" class="donut" role="img" aria-label="สัดส่วนการใช้จ่ายตามหมวดหมู่">
+      <g transform="rotate(-90 90 90)">${arcs}</g>
+      <text x="90" y="84" text-anchor="middle" class="d-lbl">รวม</text>
+      <text x="90" y="104" text-anchor="middle" class="d-val">${money(d.total)}</text>
+    </svg></div>
+  <div class="d-legend">${[...segs].sort((a, b) => b.total - a.total).map((x) => `
+    <div class="d-row ${x.id ? 'clickable' : ''} ${catSel && catSel === x.id ? 'sel' : ''}" ${x.id ? `data-act="cat-sel" data-id="${x.id}"` : ''}>
+      <i class="sw" style="background:${x.color}"></i><span class="grow">${esc(x.label)}</span>
+      <b class="amt">${money(x.total)}</b><span class="muted small pct">${Math.round((x.total / sum) * 100)}%</span></div>`).join('')}
+    ${d.list.filter((g) => g.total < 0).map((g) => `<div class="d-row muted small"><i class="sw" style="background:transparent;border:1px dashed var(--muted)"></i><span class="grow">${esc(g.label)} (คืนเงิน)</span><b class="amt">${money(g.total)}</b><span class="pct"></span></div>`).join('')}
+  </div>`;
+}
 function renderCategories() {
   const t = today(), d = catData();
-  const maxV = Math.max(1, ...d.list.map((g) => g.total));
   const months = [];
   for (let i = 0; i < 6; i++) months.push(addMonthsKey(cycleKey(t), -i));
   let h = `<div class="seg" style="flex-wrap:wrap;overflow:visible">
@@ -868,14 +913,8 @@ function renderCategories() {
   <label class="check small" style="margin:2px 0 10px"><input type="checkbox" id="catInst" ${catInst ? 'checked' : ''}> รวมค่างวดผ่อนชำระ</label>
   <div class="card pad viz" style="margin-bottom:10px">
     <div class="muted small">${catPeriod === 'current' ? 'ยอดใช้จ่ายรอบปัจจุบัน (ยังไม่ตัดรอบ) ทุกบัตร' : 'ยอดใช้จ่ายเดือน ' + fmtKey(catPeriod) + ' ทุกบัตร (ตามวันที่รูด)'}</div>
-    <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums">${money(d.total)}</div>
     <div class="small muted">${d.count} รายการ · ${d.list.length} หมวด${catInst ? ' · รวมค่างวดผ่อน' : ''}</div>
-    ${d.list.length ? `<div class="sbars">` + d.list.map((g) => `
-      <div class="sbar clickable ${catSel === g.id ? 'sel' : ''}" data-act="cat-sel" data-id="${g.id}">
-        <div class="sbar-h"><span class="grow title">${esc(g.label)}</span><b class="amt">${money(g.total)} <span class="muted small">${d.total ? Math.round((g.total / d.total) * 100) : 0}%</span></b></div>
-        <div class="track"><i class="seg ${g.id === '__inst' ? 's2' : 's1'}" style="width:${Math.max(0, (g.total / maxV) * 100)}%"></i></div>
-        <div class="meta">${g.inst ? g.inst.length + ' รายการผ่อน' : g.items.length + ' รายการ'}</div>
-      </div>`).join('') + `</div>` : `<div class="empty">ไม่มีรายการในช่วงนี้</div>`}
+    ${d.list.length ? donutChart(d) : `<div class="empty">ไม่มีรายการในช่วงนี้</div>`}
   </div>`;
   const g = d.list.find((x) => x.id === catSel);
   if (g) {
