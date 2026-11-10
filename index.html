@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-3';
+const APP_VERSION = '2026.11.10-4';
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -577,12 +577,11 @@ function renderHome() {
   const overdue = pend.filter((b) => b.status === 'overdue');
   const soon = pend.filter((b) => b.status !== 'overdue' && b.daysLeft <= 5);
   const totalDue = pend.reduce((s, b) => s + (b.st ? Number(b.st.amount) : 0), 0);
-  const totalMin = pend.reduce((s, b) => s + (b.st ? Number(b.st.minPay || 0) : 0), 0);
   const activeInst = state.installments.map((p) => [p, instStatus(p, t)]).filter(([, s]) => s.active);
   const instMonthly = activeInst.reduce((s, [p]) => s + Number(p.monthly), 0);
   const instRemain = activeInst.reduce((s, [, st]) => s + st.remainingAmt, 0);
-  const curKey = cycleKey(t);
-  const spent = monthTxns(curKey).reduce((s, x) => s + Number(x.amount), 0);
+  // ยอดใช้จ่ายรอบปัจจุบัน (ยังไม่ตัดรอบ) ของทุกบัตร ไม่รวมผ่อน
+  const curSpend = state.cards.map((c) => cycleSpend(c, t)), spent = curSpend.reduce((s, x) => s + x.amount, 0), spentN = curSpend.reduce((s, x) => s + x.count, 0);
   const unknownCount = pend.filter((b) => b.status === 'unknown').length;
 
   let h = '';
@@ -593,9 +592,9 @@ function renderHome() {
 
   h += `<div class="grid2">
     <div class="card tile"><div class="lbl">ยอดที่ต้องชำระ</div><div class="val">${money(totalDue)}</div><div class="sub">${pend.length - unknownCount} บิล${unknownCount ? ` · ยังไม่กรอกยอด ${unknownCount} ใบ` : ''}</div></div>
-    <div class="card tile"><div class="lbl">ยอดขั้นต่ำรวม</div><div class="val">${money(totalMin)}</div><div class="sub">จ่ายเต็มจำนวนดีที่สุด</div></div>
+    <div class="card tile"><div class="lbl">ค่าใช้จ่ายรวม</div><div class="val">${money(spent + instMonthly)}</div><div class="sub">ใช้จ่ายรอบนี้ + ค่างวดผ่อน/เดือน</div></div>
     <div class="card tile"><div class="lbl">ค่างวดผ่อน / เดือน</div><div class="val">${money(instMonthly)}</div><div class="sub">${activeInst.length} รายการ · เหลือ ${money(instRemain)}</div></div>
-    <div class="card tile"><div class="lbl">ใช้จ่ายเดือนนี้</div><div class="val">${money(spent)}</div><div class="sub">${monthTxns(curKey).length} รายการที่บันทึก</div></div>
+    <div class="card tile"><div class="lbl">ยอดใช้จ่ายรวม</div><div class="val">${money(spent)}</div><div class="sub">รอบปัจจุบันทุกบัตร · ${spentN} รายการ (ไม่รวมผ่อน)</div></div>
   </div>`;
 
   const live = state.cards.map((card) => ({ card, cs: cycleSpend(card, t) }));
