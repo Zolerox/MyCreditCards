@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-6'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.10-7'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -467,6 +467,13 @@ function instStatus(p, t = today()) {
     endKey: addMonthsKey(p.firstCycle, p.months - 1), active: remaining > 0,
   };
 }
+/** รายการผ่อนที่เรียกเก็บในรอบบิล key (พร้อมงวดที่) */
+function instItemsForCycle(cardId, key) {
+  return state.installments.filter((p) => p.cardId === cardId)
+    .map((p) => ({ p, k: monthsDiff(p.firstCycle, key) }))
+    .filter(({ p, k }) => k >= 0 && (!p.months || k < p.months))
+    .map(({ p, k }) => ({ p, term: k + 1 }));
+}
 function instForCycle(cardId, key) {
   return state.installments.filter((p) => p.cardId === cardId)
     .filter((p) => { const k = monthsDiff(p.firstCycle, key); return k >= 0 && (!p.months || k < p.months); })
@@ -597,16 +604,19 @@ function renderHome() {
     <div class="card tile"><div class="lbl">ยอดใช้จ่ายรวม</div><div class="val">${money(spent)}</div><div class="sub">รอบปัจจุบันทุกบัตร · ${spentN} รายการ (ไม่รวมผ่อน)</div></div>
   </div>`;
 
-  const live = state.cards.map((card) => ({ card, cs: cycleSpend(card, t) }));
-  const liveTotal = live.reduce((s, x) => s + x.cs.amount, 0);
-  const liveShown = live.filter((x) => x.cs.count);
-  h += `<h2>⚡ ยอดใช้จ่ายรอบนี้ (ยังไม่ตัดรอบ)<span class="sp"></span><span class="muted small">${money(liveTotal)}</span></h2>`;
-  h += `<div class="card list">` + (liveShown.length ? liveShown.map(({ card, cs }) => `
+  const live = state.cards.map((card) => {
+    const cs = cycleSpend(card, t), inst = cs.cutDate ? instForCycle(card.id, cycleKey(cs.cutDate)) : 0;
+    return { card, cs, inst };
+  });
+  const liveTotal = live.reduce((s, x) => s + x.cs.amount + x.inst, 0);
+  const liveShown = live.filter((x) => x.cs.count || x.inst > 0);
+  h += `<h2>⚡ ยอดรอบนี้ (ยังไม่ตัดรอบ)<span class="sp"></span><span class="muted small">${money(liveTotal)}</span></h2>`;
+  h += `<div class="card list">` + (liveShown.length ? liveShown.map(({ card, cs, inst }) => `
     <div class="row clickable" data-act="txn-card-go" data-id="${card.id}">${chip(card)}
       <div class="grow"><div class="title">${esc(cardLabel(card))}</div>
         <div class="meta">${cs.cutDate ? 'ตัดรอบ ' + fmtD(cs.cutDate) + ' (' + relDays(daysBetween(t, cs.cutDate)) + ')' : 'เดือนนี้'} · ${cs.count} รายการ</div>
-</div>
-      <div class="amt">${money(cs.amount)}</div>
+        ${inst > 0 ? `<div class="meta">ใช้จ่าย ${money(cs.amount)} + ผ่อน ${money(inst)}</div>` : ''}</div>
+      <div class="amt">${money(cs.amount + inst)}</div>
     </div>`).join('') : `<div class="empty">ยังไม่มีรายการรอบนี้ — กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึกการใช้จ่าย</div>`) + `</div>`;
 
   h += `<h2>🧾 บิลที่ต้องจ่าย</h2>`;
@@ -761,7 +771,7 @@ function renderTxn() {
   let h = `<h2>สรุปยอดค้างจ่ายตามบัตร<span class="sp"></span>
     <button class="btn sm" data-act="import" ${state.cards.length ? '' : 'disabled'}>⬆ CSV</button>
     <button class="btn sm primary" data-act="txn-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่ม</button></h2>`;
-  const nAll = rows.reduce((a, o) => a + outstandingTxns(o).length, 0);
+  const nAll = rows.reduce((a, o) => a + outstandingTxns(o).length + (hasDates(o.card) ? o.parts.filter((pt) => pt.inst > 0).reduce((x, pt) => x + instItemsForCycle(o.card.id, pt.key).length, 0) : 0), 0);
   h += `<div class="seg" style="margin-bottom:10px">
     <button class="btn ${txnView === 'summary' ? 'on' : ''}" data-act="txn-view" data-id="summary" style="flex:1 1 0">📊 สรุป</button>
     <button class="btn ${txnView === 'list' ? 'on' : ''}" data-act="txn-view" data-id="list" style="flex:1 1 0">📝 รายการ / แก้ไข (${nAll})</button></div>`;
@@ -791,19 +801,28 @@ function renderTxn() {
   // รายการแยกตามบัตร (เหมือนหน้าผ่อนชำระ) — แตะรายการเพื่อแก้ไข/ลบ
   const sel = txnCard !== 'all' && cardById(txnCard);
   const groups = (sel ? rows.filter((o) => o.card.id === txnCard) : rows)
-    .map((o) => ({ card: o.card, list: outstandingTxns(o).sort((a, b) => b.date.localeCompare(a.date)) })).filter((g) => g.list.length);
-  const n = groups.reduce((a, g) => a + g.list.length, 0);
-  h += `<h2 style="margin-top:0">รายการใช้จ่ายที่ยังไม่ชำระ (${n})<span class="sp"></span>${sel ? '<button class="btn sm" data-act="txn-card" data-id="all">ดูทุกบัตร</button>' : ''}</h2>`;
+    .map((o) => ({
+      card: o.card,
+      list: outstandingTxns(o).sort((a, b) => b.date.localeCompare(a.date)),
+      inst: o.parts.filter((pt) => pt.inst > 0 && hasDates(o.card)).flatMap((pt) => instItemsForCycle(o.card.id, pt.key).map((x) => ({ ...x, part: pt }))),
+    })).filter((g) => g.list.length || g.inst.length);
+  const n = groups.reduce((a, g) => a + g.list.length + g.inst.length, 0);
+  h += `<h2 style="margin-top:0">รายการที่ยังไม่ชำระ (${n})<span class="sp"></span>${sel ? '<button class="btn sm" data-act="txn-card" data-id="all">ดูทุกบัตร</button>' : ''}</h2>`;
   if (!n) h += `<div class="card empty">ไม่มีรายการ<br><span class="small">กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึก</span></div>`;
   else h += `<p class="small muted" style="margin:-4px 0 6px">แตะที่รายการเพื่อแก้ไขหรือลบ</p>`;
   for (const g of groups) {
     h += `<h2 style="font-size:14px">${chip(g.card)} ${esc(cardLabel(g.card))}<span class="sp"></span>
-      <button class="btn sm" data-act="txn-add" data-card="${g.card.id}">＋ เพิ่ม</button></h2>`;
+      <button class="btn sm" data-act="txn-add" data-card="${g.card.id}">＋ ใช้จ่าย</button><button class="btn sm" data-act="inst-add" data-card="${g.card.id}">＋ ผ่อน</button></h2>`;
     h += `<div class="card list">` + g.list.map((x) => `
       <div class="row clickable" data-act="txn-edit" data-id="${x.id}">
         <div class="grow"><div class="title">${esc(x.desc || '(ไม่มีชื่อ)')}</div>
         <div class="meta">${fmtD(parseIso(x.date))} · ${esc((CAT_BY_ID[x.category] || CAT_BY_ID.other).label)}</div></div>
         <div class="amt" style="${Number(x.amount) < 0 ? 'color:var(--ok)' : ''}">${money(x.amount)}</div>
+        <span class="muted" aria-hidden="true">›</span></div>`).join('') + g.inst.map(({ p, term, part }) => `
+      <div class="row clickable" data-act="inst-edit" data-id="${p.id}">
+        <div class="grow"><div class="title">📆 ${esc(p.name)}</div>
+        <div class="meta">ผ่อน ${p.months ? 'งวด ' + term + '/' + p.months : 'รายเดือน'} · ${part.kind === 'current' ? 'รอบนี้' : 'บิล ' + fmtKey(part.key)}</div></div>
+        <div class="amt" style="color:var(--series-2, inherit)">${money(p.monthly)}</div>
         <span class="muted" aria-hidden="true">›</span></div>`).join('') + `</div>`;
   }
   return h;
@@ -996,20 +1015,21 @@ function stmtForm(cardId, key) {
   form.cardId.addEventListener('change', upd); form.cycle.addEventListener('change', upd); upd();
 }
 
-function instForm(p) {
+function instForm(p, presetCard) {
   const t = today();
-  const card = p ? cardById(p.cardId) : (datedCards()[0] || state.cards[0]);
-  const curTerm = p && hasDates(card) ? Math.max(1, monthsDiff(p.firstCycle, cycleKey(lastStmt(card, t))) + 1) : 1;
+  const card = p ? cardById(p.cardId) : (cardById(presetCard) || datedCards()[0] || state.cards[0]);
+  // งวดที่เรียกเก็บแล้ว ณ บิลล่าสุด (0 = ยังไม่เข้าบิล) — ไม่บังคับขั้นต่ำ 1 เพื่อไม่ให้แก้ไขแล้วงวดเลื่อน
+  const curTerm = p && hasDates(card) ? Math.max(0, Math.min(p.months || Infinity, monthsDiff(p.firstCycle, cycleKey(lastStmt(card, t))) + 1)) : 0;
   openSheet(p ? 'แก้ไขรายการผ่อน' : 'เพิ่มรายการผ่อน', `
     <label class="f"><span>บัตร</span><select name="cardId">${cardOptions(card && card.id)}</select></label>
     <label class="f"><span>รายการ</span><input name="name" value="${esc(p ? p.name : '')}" placeholder="เช่น iPhone 17, แอร์ Daikin" required></label>
     <div class="grid2">
       <label class="f"><span>ค่างวด / เดือน</span><input name="monthly" value="${p ? p.monthly : ''}" inputmode="decimal" required></label>
       <label class="f"><span>จำนวนงวดทั้งหมด (0 = ไม่มีกำหนด)</span><input name="months" value="${p ? p.months : ''}" inputmode="numeric" required></label>
-      <label class="f"><span>งวดล่าสุดที่เรียกเก็บแล้ว</span><input name="term" value="${p ? curTerm : 1}" inputmode="numeric"></label>
+      <label class="f"><span>งวดล่าสุดที่เรียกเก็บแล้ว</span><input name="term" value="${p ? curTerm : 0}" inputmode="numeric"></label>
       <label class="f"><span>ดอกเบี้ย % ต่อเดือน</span><input name="rate" value="${p && p.rate ? p.rate : ''}" inputmode="decimal" placeholder="0"></label>
     </div>
-    <p class="hint">“งวดล่าสุด” = งวดที่อยู่ในบิลรอบล่าสุด (เช่น เพิ่งผ่อนงวดแรกในบิลเดือนนี้ = 1, ยังไม่เข้าบิลเลย = 0) แอปจะนับงวดต่อให้อัตโนมัติทุกเดือน</p>
+    <p class="hint">“งวดล่าสุด” = งวดที่อยู่ในบิลรอบล่าสุด (เพิ่งซื้อ/ยังไม่เข้าบิล = 0 · อยู่ในบิลที่ตัดล่าสุดแล้ว = 1) แอปจะนับงวดต่อให้อัตโนมัติทุกเดือน</p>
     ${p ? `<button type="button" class="btn danger block" style="margin-bottom:10px" data-act="inst-del" data-id="${p.id}">ลบรายการนี้</button>` : ''}`,
   (f) => {
     const c = cardById(f.cardId), months = parseInt(f.months, 10), monthly = num(f.monthly), term = parseInt(f.term || '0', 10);
@@ -1421,7 +1441,7 @@ document.addEventListener('click', async (e) => {
       if (st) { st.paid = true; st.paidDate = iso(today()); save(); toast('✓ บันทึกว่าชำระแล้ว'); }
       break;
     }
-    case 'inst-add': instForm(); break;
+    case 'inst-add': instForm(null, el.dataset.card); break;
     case 'inst-edit': instForm(state.installments.find((p) => p.id === id)); break;
     case 'inst-del':
       if (!confirm('ลบรายการผ่อนนี้?')) return;
