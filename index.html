@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-9'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.10-10'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -610,7 +610,9 @@ function renderHome() {
     return { card, cs, inst };
   });
   const liveTotal = live.reduce((s, x) => s + x.cs.amount + x.inst, 0);
-  const liveShown = live.filter((x) => x.cs.count || x.inst > 0);
+  // เรียงตามวันตัดรอบ (ใกล้สุดก่อน) — บัตรที่ยังไม่ตั้งวันตัดรอบอยู่ท้าย
+  const liveShown = live.filter((x) => x.cs.count || x.inst > 0)
+    .sort((a, b) => (a.cs.cutDate ? a.cs.cutDate.getTime() : Infinity) - (b.cs.cutDate ? b.cs.cutDate.getTime() : Infinity));
   h += `<h2>⚡ ยอดรอบนี้ (ยังไม่ตัดรอบ)<span class="sp"></span><span class="muted small">${money(liveTotal)}</span></h2>`;
   h += `<div class="card list">` + (liveShown.length ? liveShown.map(({ card, cs, inst }) => `
     <div class="row clickable" data-act="txn-card-go" data-id="${card.id}">${chip(card)}
