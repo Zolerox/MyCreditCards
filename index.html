@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-10'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.10-11'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -770,13 +770,15 @@ function renderTxn() {
   const tot = rows.reduce((s, o) => s + o.total, 0), sp = rows.reduce((s, o) => s + o.spend, 0), ins = rows.reduce((s, o) => s + o.inst, 0);
   const billed = rows.reduce((s, o) => s + o.parts.filter((p) => p.kind === 'billed').reduce((a, p) => a + p.spend + p.inst, 0), 0);
   const maxV = Math.max(1, ...rows.map((o) => o.total));
-  let h = `<h2>สรุปยอดค้างจ่ายตามบัตร<span class="sp"></span>
+  let h = `<h2>สรุปการใช้จ่าย<span class="sp"></span>
     <button class="btn sm" data-act="import" ${state.cards.length ? '' : 'disabled'}>⬆ CSV</button>
     <button class="btn sm primary" data-act="txn-add" ${state.cards.length ? '' : 'disabled'}>+ เพิ่ม</button></h2>`;
   const nAll = rows.reduce((a, o) => a + outstandingTxns(o).length + (hasDates(o.card) ? o.parts.filter((pt) => pt.inst > 0).reduce((x, pt) => x + instItemsForCycle(o.card.id, pt.key).length, 0) : 0), 0);
   h += `<div class="seg" style="margin-bottom:10px">
-    <button class="btn ${txnView === 'summary' ? 'on' : ''}" data-act="txn-view" data-id="summary" style="flex:1 1 0">📊 สรุป</button>
-    <button class="btn ${txnView === 'list' ? 'on' : ''}" data-act="txn-view" data-id="list" style="flex:1 1 0">📝 รายการ / แก้ไข (${nAll})</button></div>`;
+    <button class="btn ${txnView === 'summary' ? 'on' : ''}" data-act="txn-view" data-id="summary" style="flex:1 1 0">📊 ตามบัตร</button>
+    <button class="btn ${txnView === 'cat' ? 'on' : ''}" data-act="txn-view" data-id="cat" style="flex:1 1 0">🏷 หมวดหมู่</button>
+    <button class="btn ${txnView === 'list' ? 'on' : ''}" data-act="txn-view" data-id="list" style="flex:1 1 0">📝 รายการ (${nAll})</button></div>`;
+  if (txnView === 'cat') return h + renderCategories();
   if (txnView === 'summary') {
   h += `<div class="card pad viz" style="margin-bottom:10px">
     <div class="muted small">ยอดที่ต้องจ่ายทั้งหมด (ยังไม่ชำระ)</div>
@@ -827,6 +829,65 @@ function renderTxn() {
         <div class="amt" style="color:var(--series-2, inherit)">${money(p.monthly)}</div>
         <span class="muted" aria-hidden="true">›</span></div>`).join('') + `</div>`;
   }
+  return h;
+}
+
+/* ---------- สรุปตามหมวดหมู่ (รวมทุกบัตร) ---------- */
+let catPeriod = 'current'; // 'current' = รอบปัจจุบันทุกบัตร | 'YYYY-MM' = เดือนปฏิทิน
+let catInst = false;       // รวมค่างวดผ่อนเป็นหมวด "ผ่อนชำระ"
+let catSel = '';           // หมวดที่เลือกดูรายการ
+function catData() {
+  const t = today();
+  let txns, inst = [];
+  if (catPeriod === 'current') {
+    txns = state.cards.flatMap((c) => {
+      const cs = cycleSpend(c, t);
+      const from = hasDates(c) ? lastStmt(c, t) : new Date(t.getFullYear(), t.getMonth(), 0), to = cs.cutDate;
+      return state.txns.filter((x) => x.cardId === c.id).filter((x) => { const d = parseIso(x.date); return d > from && (!to || d <= to); });
+    });
+    if (catInst) inst = state.cards.filter(hasDates).flatMap((c) => instItemsForCycle(c.id, cycleKey(cycleSpend(c, t).cutDate)).map((x) => ({ ...x, card: c })));
+  } else {
+    txns = state.txns.filter((x) => x.date.slice(0, 7) === catPeriod);
+    // ค่างวดของรอบบิลที่ตัดในเดือนนั้น
+    if (catInst) inst = state.cards.filter(hasDates).flatMap((c) => instItemsForCycle(c.id, catPeriod).map((x) => ({ ...x, card: c })));
+  }
+  const groups = {};
+  for (const x of txns) { const k = CAT_BY_ID[x.category] ? x.category : 'other'; (groups[k] = groups[k] || { id: k, label: CAT_BY_ID[k].label, total: 0, items: [] }); groups[k].total += Number(x.amount); groups[k].items.push(x); }
+  if (inst.length) groups.__inst = { id: '__inst', label: '📆 ผ่อนชำระ', total: inst.reduce((s, x) => s + Number(x.p.monthly), 0), items: [], inst };
+  const list = Object.values(groups).filter((g) => Math.abs(g.total) > 0.004).sort((a, b) => b.total - a.total);
+  return { list, total: list.reduce((s, g) => s + g.total, 0), count: txns.length };
+}
+function renderCategories() {
+  const t = today(), d = catData();
+  const maxV = Math.max(1, ...d.list.map((g) => g.total));
+  const months = [];
+  for (let i = 0; i < 6; i++) months.push(addMonthsKey(cycleKey(t), -i));
+  let h = `<div class="seg" style="flex-wrap:wrap;overflow:visible">
+    <button class="btn sm ${catPeriod === 'current' ? 'on' : ''}" data-act="cat-period" data-id="current">รอบปัจจุบัน</button>
+    ${months.map((k) => `<button class="btn sm ${catPeriod === k ? 'on' : ''}" data-act="cat-period" data-id="${k}">${fmtKey(k)}</button>`).join('')}</div>
+  <label class="check small" style="margin:2px 0 10px"><input type="checkbox" id="catInst" ${catInst ? 'checked' : ''}> รวมค่างวดผ่อนชำระ</label>
+  <div class="card pad viz" style="margin-bottom:10px">
+    <div class="muted small">${catPeriod === 'current' ? 'ยอดใช้จ่ายรอบปัจจุบัน (ยังไม่ตัดรอบ) ทุกบัตร' : 'ยอดใช้จ่ายเดือน ' + fmtKey(catPeriod) + ' ทุกบัตร (ตามวันที่รูด)'}</div>
+    <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums">${money(d.total)}</div>
+    <div class="small muted">${d.count} รายการ · ${d.list.length} หมวด${catInst ? ' · รวมค่างวดผ่อน' : ''}</div>
+    ${d.list.length ? `<div class="sbars">` + d.list.map((g) => `
+      <div class="sbar clickable ${catSel === g.id ? 'sel' : ''}" data-act="cat-sel" data-id="${g.id}">
+        <div class="sbar-h"><span class="grow title">${esc(g.label)}</span><b class="amt">${money(g.total)} <span class="muted small">${d.total ? Math.round((g.total / d.total) * 100) : 0}%</span></b></div>
+        <div class="track"><i class="seg ${g.id === '__inst' ? 's2' : 's1'}" style="width:${Math.max(0, (g.total / maxV) * 100)}%"></i></div>
+        <div class="meta">${g.inst ? g.inst.length + ' รายการผ่อน' : g.items.length + ' รายการ'}</div>
+      </div>`).join('') + `</div>` : `<div class="empty">ไม่มีรายการในช่วงนี้</div>`}
+  </div>`;
+  const g = d.list.find((x) => x.id === catSel);
+  if (g) {
+    h += `<h2 id="catList" style="font-size:14px">${esc(g.label)}<span class="sp"></span><button class="btn sm" data-act="cat-sel" data-id="">ปิด</button></h2>`;
+    h += `<div class="card list">` + (g.inst
+      ? g.inst.map(({ p, term, card }) => `<div class="row clickable" data-act="inst-edit" data-id="${p.id}">${chip(card)}
+          <div class="grow"><div class="title">${esc(p.name)}</div><div class="meta">${p.months ? 'งวด ' + term + '/' + p.months : 'รายเดือน'}</div></div>
+          <div class="amt">${money(p.monthly)}</div><span class="muted" aria-hidden="true">›</span></div>`).join('')
+      : [...g.items].sort((a, b) => b.date.localeCompare(a.date)).map((x) => { const c = cardById(x.cardId); return `<div class="row clickable" data-act="txn-edit" data-id="${x.id}">${c ? chip(c) : ''}
+          <div class="grow"><div class="title">${esc(x.desc || '(ไม่มีชื่อ)')}</div><div class="meta">${fmtD(parseIso(x.date))}${c ? ' · ' + esc(cardLabel(c).replace(/ ••\d{4}$/, '')) : ''}</div></div>
+          <div class="amt" style="${Number(x.amount) < 0 ? 'color:var(--ok)' : ''}">${money(x.amount)}</div><span class="muted" aria-hidden="true">›</span></div>`; }).join('')) + `</div>`;
+  } else if (d.list.length) h += `<p class="small muted">แตะหมวดเพื่อดูรายการ — แตะรายการเพื่อแก้หมวดหมู่หรือยอด</p>`;
   return h;
 }
 
@@ -1384,6 +1445,7 @@ document.addEventListener('change', (e) => {
     img.onerror = () => toast('เปิดรูปไม่ได้');
     img.src = url;
   }
+  if (e.target.id === 'catInst') { catInst = e.target.checked; render(); }
   if (e.target.id === 'restoreFile' && e.target.files[0]) {
     e.target.files[0].text().then((txt) => {
       try {
@@ -1461,6 +1523,8 @@ document.addEventListener('click', async (e) => {
     case 'txn-card': txnCard = id; render(); break;
     case 'txn-card-go': txnCard = id; tab = 'txn'; txnView = 'list'; render(); window.scrollTo(0, 0); break;
     case 'txn-view': txnView = id; if (id === 'summary') txnCard = 'all'; render(); window.scrollTo(0, 0); break;
+    case 'cat-period': catPeriod = id; catSel = ''; render(); break;
+    case 'cat-sel': catSel = catSel === id ? '' : id; render(); if (catSel) document.getElementById('catList')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); break;
     case 'month-prev': txnMonth = addMonthsKey(txnMonth, -1); render(); break;
     case 'month-next': txnMonth = addMonthsKey(txnMonth, 1); render(); break;
     case 'import': importForm(); break;
