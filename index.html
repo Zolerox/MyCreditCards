@@ -251,7 +251,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-8'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.10-9'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -393,10 +393,11 @@ function dueFor(card, S) {
   if (d <= S) d = clampDate(S.getFullYear(), S.getMonth() + 1, card.dueDay);
   return d;
 }
-/** รอบบิลล่าสุดที่ตัดไปแล้ว (รวมวันนี้) */
+/** รอบบิลล่าสุดที่สรุปยอดแล้ว — วันตัดรอบคือวันสุดท้ายที่รูดแล้วยังเข้ารอบนั้น
+ *  บิลจะสรุปในวันถัดไป ดังนั้นวันตัดรอบเอง (S == วันนี้) ยังนับเป็นรอบปัจจุบัน */
 function lastStmt(card, t = today()) {
   let s = stmtDate(card, t.getFullYear(), t.getMonth());
-  if (s > t) s = stmtDate(card, t.getFullYear(), t.getMonth() - 1);
+  if (s >= t) s = stmtDate(card, t.getFullYear(), t.getMonth() - 1);
   return s;
 }
 /** รอบบิลที่รายการซึ่งรูดในวัน t จะไปอยู่ */
@@ -535,7 +536,7 @@ function upcomingEvents(days = 31, t = today()) {
 /** ยอดใช้จ่ายรอบปัจจุบัน (ยังไม่ตัดรอบ) ของบัตร — ถ้ายังไม่ตั้งวันตัดรอบ ใช้ยอดเดือนนี้ */
 function cycleSpend(card, t = today()) {
   let from, to = null;
-  if (hasDates(card)) { from = lastStmt(card, t); to = stmtForPurchase(card, addDays(t, 1)); }
+  if (hasDates(card)) { from = lastStmt(card, t); to = stmtForPurchase(card, t); }
   else from = new Date(t.getFullYear(), t.getMonth(), 0);
   const list = state.txns.filter((x) => x.cardId === card.id).filter((x) => { const d = parseIso(x.date); return d > from && (!to || d <= to); });
   return { amount: list.reduce((s, x) => s + Number(x.amount || 0), 0), count: list.length, cutDate: to };
