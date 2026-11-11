@@ -265,7 +265,7 @@ const CATS = [
 // บัตรที่ใช้อยู่จริง (วันตัดรอบ/ครบกำหนดให้ผู้ใช้ตั้งเอง)
 const CAT_BY_ID = Object.fromEntries(CATS.map((c) => [c.id, c]));
 const STORE_KEY = 'mycards.v1';
-const APP_VERSION = '2026.11.10-13'; // ต้องตรงกับ version.json
+const APP_VERSION = '2026.11.11-1'; // ต้องตรงกับ version.json
 const DAY = 86400000;
 const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -642,7 +642,10 @@ function renderHome() {
   const pend = pendingBills(t);
   const overdue = pend.filter((b) => b.status === 'overdue');
   const soon = pend.filter((b) => b.status !== 'overdue' && b.daysLeft <= 5);
-  const totalDue = pend.reduce((s, b) => s + (b.st ? Number(b.st.amount) : 0), 0);
+  // บิลที่ยังไม่กรอกยอด ใช้ยอดประมาณจากรายการที่บันทึก (ใช้จ่าย + ค่างวดของรอบนั้น)
+  const billAmt = (b) => (b.st ? Number(b.st.amount) : estimateCycle(b.card, b.key).total);
+  const totalDue = pend.reduce((s, b) => s + billAmt(b), 0);
+  const estCount = pend.filter((b) => !b.st && billAmt(b) > 0).length;
   const activeInst = state.installments.map((p) => [p, instStatus(p, t)]).filter(([, s]) => s.active);
   const instMonthly = activeInst.reduce((s, [p]) => s + Number(p.monthly), 0);
   const instRemain = activeInst.reduce((s, [, st]) => s + st.remainingAmt, 0);
@@ -657,7 +660,7 @@ function renderHome() {
   if (soon.length) h += `<div class="alert warn">⏰ ใกล้ครบกำหนด: ${soon.map((b) => `<b>${esc(cardLabel(b.card))}</b> (${relDays(b.daysLeft)})`).join(', ')}</div>`;
 
   h += `<div class="grid2">
-    <div class="card tile"><div class="lbl">ยอดที่ต้องชำระ</div><div class="val">${money(totalDue)}</div><div class="sub">${pend.length - unknownCount} บิล${unknownCount ? ` · ยังไม่กรอกยอด ${unknownCount} ใบ` : ''}</div></div>
+    <div class="card tile clickable" data-act="go-bills"><div class="lbl">ยอดที่ต้องชำระ</div><div class="val">${estCount ? '~' : ''}${money(totalDue)}</div><div class="sub">${pend.length} บิล${unknownCount ? ` · ประมาณ ${unknownCount} ใบ (ยังไม่กรอกยอดจริง)` : ''}</div></div>
     <div class="card tile"><div class="lbl">ค่าใช้จ่ายรวม</div><div class="val">${money(spent + instMonthly)}</div><div class="sub">ใช้จ่ายรอบนี้ + ค่างวดผ่อน/เดือน</div></div>
     <div class="card tile"><div class="lbl">ค่างวดผ่อน / เดือน</div><div class="val">${money(instMonthly)}</div><div class="sub">${activeInst.length} รายการ · เหลือ ${money(instRemain)}</div></div>
     <div class="card tile"><div class="lbl">ยอดใช้จ่ายรวม</div><div class="val">${money(spent)}</div><div class="sub">รอบปัจจุบันทุกบัตร · ${spentN} รายการ (ไม่รวมผ่อน)</div></div>
@@ -680,7 +683,7 @@ function renderHome() {
       <div class="amt">${money(cs.amount + inst)}</div>
     </div>`).join('') : `<div class="empty">ยังไม่มีรายการรอบนี้ — กดปุ่ม ＋ มุมขวาล่างเพื่อบันทึกการใช้จ่าย</div>`) + `</div>`;
 
-  h += `<h2>🧾 บิลที่ต้องจ่าย</h2>`;
+  h += `<h2 id="billsH">🧾 บิลที่ต้องจ่าย${pend.length ? `<span class="sp"></span><span class="muted small">${estCount ? '~' : ''}${money(totalDue)}</span>` : ''}</h2>`;
   if (!pend.length) h += `<div class="card empty">✅ ไม่มียอดค้างชำระ</div>`;
   else {
     h += `<div class="card list">` + pend.map((b) => `
@@ -1582,6 +1585,7 @@ document.addEventListener('click', async (e) => {
       if (!confirm('ปิดการล็อกแอป?')) return;
       state.settings.lock.enabled = false; persist(); toast('ปิดล็อกแล้ว'); render(); break;
     case 'go-cards': tab = 'cards'; render(); break;
+    case 'go-bills': document.getElementById('billsH')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); break;
     case 'card-edit': cardForm(cardById(id)); break;
     case 'card-view': cardView(cardById(id)); break;
     case 'card-del': {
